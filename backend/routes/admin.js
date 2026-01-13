@@ -1,125 +1,149 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const supabase = require('../supabase');
 
 // GET /api/admin/agents?status=Pending
-router.get('/agents', (req, res) => {
+router.get('/agents', async (req, res) => {
     const { status } = req.query;
-    let query = "SELECT id, name, email, phone, cnic, territory, status, created_at, profile_photo, cnic_document FROM agents";
-    let params = [];
+    try {
+        let query = supabase
+            .from('agents')
+            .select('id, name, email, phone, cnic, territory, status, created_at, profile_photo, cnic_document');
 
-    if (status) {
-        query += " WHERE status = ?";
-        params.push(status);
+        if (status) {
+            query = query.eq('status', status);
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: false });
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'DB Error' });
     }
-
-    query += " ORDER BY created_at DESC";
-
-    db.all(query, params, (err, rows) => {
-        if (err) return res.status(500).json({ error: 'DB Error' });
-        res.json(rows);
-    });
 });
 
 // APPROVE AGENT
-router.put('/agents/:id/approve', (req, res) => {
+router.put('/agents/:id/approve', async (req, res) => {
     const { id } = req.params;
-    db.run("UPDATE agents SET status = 'Active' WHERE id = ?", [id], function (err) {
-        if (err) return res.status(500).json({ error: 'DB update failed' });
+    try {
+        const { error } = await supabase
+            .from('agents')
+            .update({ status: 'Active' })
+            .eq('id', id);
+
+        if (error) throw error;
         res.json({ message: 'Agent approved successfully' });
-    });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'DB update failed' });
+    }
 });
 
 // REJECT AGENT
-router.put('/agents/:id/reject', (req, res) => {
+router.put('/agents/:id/reject', async (req, res) => {
     const { id } = req.params;
-    db.run("UPDATE agents SET status = 'Suspended' WHERE id = ?", [id], function (err) {
-        if (err) return res.status(500).json({ error: 'DB update failed' });
+    try {
+        const { error } = await supabase
+            .from('agents')
+            .update({ status: 'Suspended' })
+            .eq('id', id);
+
+        if (error) throw error;
         res.json({ message: 'Agent rejected' });
-    });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'DB update failed' });
+    }
 });
 
-// GET ADMIN DASHBOARD STATS (Enhanced)
-router.get('/stats', (req, res) => {
-    const stats = {};
+// GET ADMIN DASHBOARD STATS
+router.get('/stats', async (req, res) => {
+    try {
+        const stats = {};
 
-    db.get(`SELECT COUNT(*) as count FROM agents`, (err, row) => {
-        stats.totalAgents = row?.count || 0;
+        const { count: totalAgents } = await supabase.from('agents').select('*', { count: 'exact', head: true });
+        const { count: pendingAgents } = await supabase.from('agents').select('*', { count: 'exact', head: true }).eq('status', 'Pending');
+        const { count: totalCustomers } = await supabase.from('customers').select('*', { count: 'exact', head: true });
+        const { count: totalServices } = await supabase.from('services').select('*', { count: 'exact', head: true });
 
-        db.get(`SELECT COUNT(*) as count FROM agents WHERE status = 'Pending'`, (err, row) => {
-            stats.pendingAgents = row?.count || 0;
+        stats.totalAgents = totalAgents || 0;
+        stats.pendingAgents = pendingAgents || 0;
+        stats.totalCustomers = totalCustomers || 0;
+        stats.totalServices = totalServices || 0;
 
-            db.get(`SELECT COUNT(*) as count FROM customers`, (err, row) => {
-                stats.totalCustomers = row?.count || 0;
+        // Mock Revenue Data for Chart
+        stats.revenueChart = [
+            { name: 'Jan', revenue: 4000, services: 24 },
+            { name: 'Feb', revenue: 3000, services: 18 },
+            { name: 'Mar', revenue: 2000, services: 12 },
+            { name: 'Apr', revenue: 2780, services: 20 },
+            { name: 'May', revenue: 1890, services: 15 },
+            { name: 'Jun', revenue: 5390, services: 30 },
+        ];
 
-                db.get(`SELECT COUNT(*) as count FROM services`, (err, row) => {
-                    stats.totalServices = row?.count || 0;
-
-                    // Mock Revenue Data for Chart
-                    stats.revenueChart = [
-                        { name: 'Jan', revenue: 4000, services: 24 },
-                        { name: 'Feb', revenue: 3000, services: 18 },
-                        { name: 'Mar', revenue: 2000, services: 12 },
-                        { name: 'Apr', revenue: 2780, services: 20 },
-                        { name: 'May', revenue: 1890, services: 15 },
-                        { name: 'Jun', revenue: 5390, services: 30 },
-                    ];
-                    res.json(stats);
-                });
-            });
-        });
-    });
+        res.json(stats);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch stats' });
+    }
 });
 
 // GET MAP DATA (Global View)
-router.get('/map-data', (req, res) => {
-    // Get all agents with Lat/Lng (Simulated) and Customers
-    // For agents, we might not have lat/lng in DB yet, so we mock or use customers
+router.get('/map-data', async (req, res) => {
+    try {
+        const { data: agents, error: aError } = await supabase
+            .from('agents')
+            .select('id, name, email, territory, status, location_lat, location_lng, last_active')
+            .eq('status', 'Active');
 
-    const data = {
-        agents: [],
-        customers: []
-    };
+        if (aError) throw aError;
 
-    db.all(`SELECT id, name, email, territory, status, location_lat, location_lng, last_active FROM agents WHERE status='Active'`, (err, agents) => {
-        if (err) return res.status(500).json({ error: err.message });
+        const { data: customers, error: cError } = await supabase
+            .from('customers')
+            .select('id, business_name, address, status, location_lat, location_lng');
 
-        // Mocking random locations for agents based on 'Territory' roughly
-        // In real app, agents would have a live location or assigned center
-        data.agents = agents.map(a => ({
+        if (cError) throw cError;
+
+        const formattedAgents = agents.map(a => ({
             ...a,
             lat: a.location_lat || (40.7128 + (Math.random() * 0.1 - 0.05)),
             lng: a.location_lng || (-74.0060 + (Math.random() * 0.1 - 0.05)),
             type: 'agent'
         }));
 
-        db.all(`SELECT id, business_name, address, status, location_lat, location_lng FROM customers`, (err, customers) => {
-            if (err) return res.status(500).json({ error: err.message });
+        const formattedCustomers = customers.map(c => ({
+            ...c,
+            lat: c.location_lat || (40.7128 + (Math.random() * 0.2 - 0.1)),
+            lng: c.location_lng || (-74.0060 + (Math.random() * 0.2 - 0.1)),
+            type: 'customer'
+        }));
 
-            data.customers = customers.map(c => ({
-                ...c,
-                // Fallback if no location set
-                lat: c.location_lat || (40.7128 + (Math.random() * 0.2 - 0.1)),
-                lng: c.location_lng || (-74.0060 + (Math.random() * 0.2 - 0.1)),
-                type: 'customer'
-            }));
-
-            res.json(data);
+        res.json({
+            agents: formattedAgents,
+            customers: formattedCustomers
         });
-    });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // GET ALL CUSTOMERS
-router.get('/customers', (req, res) => {
-    const query = `
-        SELECT id, business_name, owner_name, email, phone, address, business_type, status, created_at 
-        FROM customers 
-        ORDER BY created_at DESC
-    `;
-    db.all(query, [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
+router.get('/customers', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('customers')
+            .select('id, business_name, owner_name, email, phone, address, business_type, status, created_at')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 module.exports = router;

@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const db = require('../db');
+const supabase = require('../supabase');
 const multer = require('multer');
 const path = require('path');
 
-const SECRET_KEY = 'super_secret_key_fire_marketplace'; // In prod, use ENV
+const SECRET_KEY = process.env.JWT_SECRET || 'super_secret_key_fire_marketplace';
 
 // Configure Multer Storage
 const storage = multer.diskStorage({
@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // REGISTER AGENT
-router.post('/register/agent', upload.fields([{ name: 'profile_photo', maxCount: 1 }, { name: 'cnic_document', maxCount: 1 }]), (req, res) => {
+router.post('/register/agent', upload.fields([{ name: 'profile_photo', maxCount: 1 }, { name: 'cnic_document', maxCount: 1 }]), async (req, res) => {
     const { name, email, password, phone, cnic, territory, terms_accepted } = req.body;
 
     // Hash password
@@ -32,24 +32,39 @@ router.post('/register/agent', upload.fields([{ name: 'profile_photo', maxCount:
     const profile_photo = req.files['profile_photo'] ? req.files['profile_photo'][0].filename : null;
     const cnic_document = req.files['cnic_document'] ? req.files['cnic_document'][0].filename : null;
 
-    const termsAcceptedBool = terms_accepted === 'true' || terms_accepted === true ? 1 : 0;
+    const termsAcceptedBool = terms_accepted === 'true' || terms_accepted === true;
 
-    db.run(`INSERT INTO agents (name, email, password, phone, cnic, territory, status, profile_photo, cnic_document, terms_accepted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [name, email, hashedPassword, phone, cnic, territory, 'Pending', profile_photo, cnic_document, termsAcceptedBool],
-        function (err) {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ error: 'Error registering agent', details: err.message });
-            }
-            res.status(201).json({ message: 'Agent registered successfully. Pending Admin Approval.', id: this.lastID });
-        }
-    );
+    try {
+        const { data, error } = await supabase
+            .from('agents')
+            .insert([
+                {
+                    name,
+                    email,
+                    password: hashedPassword,
+                    phone,
+                    cnic,
+                    territory,
+                    status: 'Pending',
+                    profile_photo,
+                    cnic_document,
+                    terms_accepted: termsAcceptedBool
+                }
+            ])
+            .select();
+
+        if (error) throw error;
+
+        res.status(201).json({ message: 'Agent registered successfully. Pending Admin Approval.', id: data[0].id });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error registering agent', details: err.message });
+    }
 });
 
 // REGISTER CUSTOMER
-router.post('/register/customer', (req, res) => {
+router.post('/register/customer', async (req, res) => {
     const { business_name, owner_name, email, password, phone, address, business_type } = req.body;
-    const bcrypt = require('bcryptjs');
     const QRCode = require('qrcode');
     const fs = require('fs');
 
@@ -61,58 +76,60 @@ router.post('/register/customer', (req, res) => {
         finalEmail = `no-email-${Date.now()}-${Math.floor(Math.random() * 1000)}@aixos-placeholder.com`;
     }
 
-    db.run(`INSERT INTO customers (business_name, owner_name, email, password, phone, address, business_type) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [business_name, owner_name, finalEmail, hashedPassword, phone, address, business_type],
-        function (err) {
-            if (err) {
-                console.error("Register Error:", err);
-                return res.status(500).json({ error: 'Error registering customer', details: err.message });
-            }
+    try {
+        const { data: customerData, error: customerError } = await supabase
+            .from('customers')
+            .insert([
+                { business_name, owner_name, email: finalEmail, password: hashedPassword, phone, address, business_type }
+            ])
+            .select();
 
-            const customerId = this.lastID;
+        if (customerError) throw customerError;
 
-            // Generate QR Code
-            const qrDir = path.join(__dirname, '../uploads/qrcodes');
-            if (!fs.existsSync(qrDir)) {
-                fs.mkdirSync(qrDir, { recursive: true });
-            }
+        const customerId = customerData[0].id;
 
-            const qrContent = JSON.stringify({
-                id: customerId,
-                type: 'customer',
-                name: business_name,
-                url: `https://app.aixos.com/customer/${customerId}`
-            });
-
-            const qrFileName = `qr-customer-${customerId}-${Date.now()}.png`;
-            const qrFilePath = path.join(qrDir, qrFileName);
-
-            QRCode.toFile(qrFilePath, qrContent, {
-                color: {
-                    dark: '#000000',  // Blue dots
-                    light: '#0000' // Transparent background
-                }
-            }, function (err) {
-                if (err) {
-                    console.error("QR Gen Error:", err);
-                    // Proceed without QR, or fail? Proceed.
-                    return res.status(201).json({ message: 'Customer registered (QR failed)', id: customerId });
-                }
-
-                const qrUrl = `/uploads/qrcodes/${qrFileName}`;
-
-                db.run(`UPDATE customers SET qr_code_url = ? WHERE id = ?`, [qrUrl, customerId], (err) => {
-                    if (err) console.error("QR Update Error:", err);
-                    res.status(201).json({ message: 'Customer registered successfully', id: customerId, qr_code_url: qrUrl });
-                });
-            });
+        // Generate QR Code
+        const qrDir = path.join(__dirname, '../uploads/qrcodes');
+        if (!fs.existsSync(qrDir)) {
+            fs.mkdirSync(qrDir, { recursive: true });
         }
-    );
+
+        const qrContent = JSON.stringify({
+            id: customerId,
+            type: 'customer',
+            name: business_name,
+            url: `https://app.aixos.com/customer/${customerId}`
+        });
+
+        const qrFileName = `qr-customer-${customerId}-${Date.now()}.png`;
+        const qrFilePath = path.join(qrDir, qrFileName);
+
+        await QRCode.toFile(qrFilePath, qrContent, {
+            color: {
+                dark: '#000000',
+                light: '#0000'
+            }
+        });
+
+        const qrUrl = `/uploads/qrcodes/${qrFileName}`;
+
+        const { error: updateError } = await supabase
+            .from('customers')
+            .update({ qr_code_url: qrUrl })
+            .eq('id', customerId);
+
+        if (updateError) console.error("QR Update Error:", updateError);
+
+        res.status(201).json({ message: 'Customer registered successfully', id: customerId, qr_code_url: qrUrl });
+    } catch (err) {
+        console.error("Register Error:", err);
+        res.status(500).json({ error: 'Error registering customer', details: err.message });
+    }
 });
 
 // LOGIN (Generic)
-router.post('/login', (req, res) => {
-    const { email, password, role } = req.body; // role: 'agent', 'customer', 'admin'
+router.post('/login', async (req, res) => {
+    const { email, password, role } = req.body;
 
     let table = '';
     if (role === 'agent') table = 'agents';
@@ -120,21 +137,28 @@ router.post('/login', (req, res) => {
     else if (role === 'admin') table = 'admins';
     else return res.status(400).json({ error: 'Invalid role' });
 
-    db.get(`SELECT * FROM ${table} WHERE email = ?`, [email], (err, user) => {
-        if (err) return res.status(500).json({ error: 'Server error' });
-        if (!user) return res.status(404).json({ error: 'User not found' });
+    try {
+        const { data: user, error } = await supabase
+            .from(table)
+            .select('*')
+            .eq('email', email)
+            .single();
+
+        if (error || !user) return res.status(404).json({ error: 'User not found' });
 
         const passwordIsValid = bcrypt.compareSync(password, user.password);
         if (!passwordIsValid) return res.status(401).json({ error: 'Invalid password' });
 
-        // If Agent, check status
         if (role === 'agent' && user.status !== 'Active') {
             return res.status(403).json({ error: 'Account is pending approval. Please contact admin.' });
         }
 
-        const token = jwt.sign({ id: user.id, role: role }, SECRET_KEY, { expiresIn: 86400 }); // 24 hours
+        const token = jwt.sign({ id: user.id, role: role }, SECRET_KEY, { expiresIn: 86400 });
         res.status(200).json({ auth: true, token: token, user: user });
-    });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
 });
 
 module.exports = router;

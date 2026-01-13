@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const supabase = require('../supabase');
 const multer = require('multer');
 const path = require('path');
 
@@ -17,179 +17,226 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // SEARCH CUSTOMERS (for Autocomplete)
-router.get('/customers/search', (req, res) => {
+router.get('/customers/search', async (req, res) => {
     const { query } = req.query;
     if (!query) return res.json([]);
 
-    db.all(`SELECT id, business_name, owner_name, email, phone, address, business_type 
-            FROM customers 
-            WHERE business_name LIKE ? OR phone LIKE ? LIMIT 10`,
-        [`%${query}%`, `%${query}%`],
-        (err, rows) => {
-            if (err) return res.status(500).json({ error: 'DB Error' });
-            res.json(rows);
-        });
-});
+    try {
+        const { data, error } = await supabase
+            .from('customers')
+            .select('id, business_name, owner_name, email, phone, address, business_type')
+            .or(`business_name.ilike.%${query}%,phone.ilike.%${query}%`)
+            .limit(10);
 
-// LOG VISIT (Complex Transaction)
-router.post('/visits', upload.any(), (req, res) => {
-    const QRCode = require('qrcode');
-    const fs = require('fs');
-    // req.body will contain flattened data. 
-    // inventory items might come as array-like keys or JSON string if sent as such. 
-    // For simplicity with FormData, we might receive 'inventory' as a JSON string.
-
-    const {
-        agent_id,
-        customer_id, // If existing
-        // New Customer Details (if customer_id is null/empty)
-        business_name, owner_name, email, phone, address, business_type,
-        // Visit Details
-        notes, risk_assessment, service_recommendations, follow_up_date,
-        // Inventory
-        inventory // Expecting JSON string: "[{type:'ABC', ...}, ...]"
-    } = req.body;
-
-    const processVisit = (finalCustId) => {
-        db.run(`INSERT INTO visits (agent_id, customer_id, customer_name, business_type, notes, risk_assessment, service_recommendations, follow_up_date) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [agent_id, finalCustId, business_name, business_type, notes, risk_assessment, service_recommendations, follow_up_date],
-            function (err) {
-                if (err) return res.status(500).json({ error: 'Failed to log visit', details: err.message });
-
-                const visitId = this.lastID;
-
-                // Process Inventory
-                if (inventory) {
-                    try {
-                        const items = JSON.parse(inventory);
-                        // We need to map photos to items if any. 
-                        // Simplified: We assume photos are handled separately or just not fully linked per-row in this basic implementation yet, 
-                        // OR we trust the client to send filenames if they uploaded beforehand? 
-                        // Better: Client uploads files in this request with fieldnames like 'inventory[0][photo]'.
-
-                        // For this iteration, let's assume basic text data for inventory first to get the structure right.
-
-                        const stmt = db.prepare(`INSERT INTO extinguishers (customer_id, visit_id, type, capacity, quantity, install_date, last_refill_date, expiry_date, condition, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-
-                        items.forEach(item => {
-                            stmt.run(finalCustId, visitId, item.type, item.capacity, item.quantity, item.install_date, item.last_refill_date, item.expiry_date, item.condition, 'Valid');
-                        });
-                        stmt.finalize();
-
-                    } catch (e) {
-                        console.error("Inventory parse error", e);
-                    }
-                }
-
-                res.status(201).json({ message: 'Visit logged successfully', visitId: visitId });
-            }
-        );
-    };
-
-    if (customer_id) {
-        processVisit(customer_id);
-    } else {
-        // Create Lead Customer
-        // For leads, password can be a placeholder
-        const placeholderPass = '$2a$08$abcdefg...'; // Dummy hash
-        const finalEmail = email || `lead-${Date.now()}@temp.com`;
-
-        db.run(`INSERT INTO customers (business_name, owner_name, email, password, phone, address, business_type, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'Lead')`,
-            [business_name, owner_name, finalEmail, placeholderPass, phone, address, business_type],
-            function (err) {
-                if (err) return res.status(500).json({ error: 'Failed to create lead customer', details: err.message });
-
-                const newCustId = this.lastID;
-
-                // GENERATE QR
-                const qrDir = path.join(__dirname, '../uploads/qrcodes');
-                if (!fs.existsSync(qrDir)) fs.mkdirSync(qrDir, { recursive: true });
-
-                const qrContent = JSON.stringify({ id: newCustId, type: 'customer', name: business_name, url: `https://app.aixos.com/customer/${newCustId}` });
-                const qrFileName = `qr-lead-${newCustId}-${Date.now()}.png`;
-                const qrFilePath = path.join(qrDir, qrFileName);
-
-                QRCode.toFile(qrFilePath, qrContent, { color: { dark: '#000000', light: '#0000' } }, (qrErr) => {
-                    if (!qrErr) {
-                        const qrUrl = `/uploads/qrcodes/${qrFileName}`;
-                        db.run(`UPDATE customers SET qr_code_url = ? WHERE id = ?`, [qrUrl, newCustId]);
-                    }
-                });
-
-                processVisit(newCustId);
-            }
-        );
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'DB Error' });
     }
 });
 
-// Get Agent Stats (Enhanced for Dashboard)
-router.get('/:id/stats', (req, res) => {
-    const agentId = req.params.id;
-    const sql = `
-        SELECT 
-            COUNT(*) as totalVisits, 
-            SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as conversions
-        FROM visits 
-        WHERE agent_id = ?
-    `;
+// LOG VISIT
+router.post('/visits', upload.any(), async (req, res) => {
+    const QRCode = require('qrcode');
+    const fs = require('fs');
 
-    // Mocking historical data for the chart (in a real app, this would be a complex group by query)
-    const monthlyData = [
-        { name: 'Jan', visits: 12, earnings: 400 },
-        { name: 'Feb', visits: 19, earnings: 750 },
-        { name: 'Mar', visits: 15, earnings: 600 },
-        { name: 'Apr', visits: 22, earnings: 1200 },
-        { name: 'May', visits: 30, earnings: 1500 },
-        { name: 'Jun', visits: 35, earnings: 1800 },
-    ];
+    const {
+        agent_id,
+        customer_id,
+        business_name, owner_name, email, phone, address, business_type,
+        notes, risk_assessment, service_recommendations, follow_up_date,
+        inventory
+    } = req.body;
 
-    db.get(sql, [agentId], (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
+    try {
+        let finalCustId = customer_id;
 
-        // Mock commission calculation (e.g., $50 per conversion)
-        const earnings = (row.conversions || 0) * 50;
+        if (!finalCustId) {
+            // Create Lead Customer
+            const placeholderPass = '$2a$08$abcdefg...'; // Dummy hash
+            const finalEmail = email || `lead-${Date.now()}@temp.com`;
 
-        res.json({
-            totalVisits: row.totalVisits || 0,
-            conversions: row.conversions || 0,
-            earnings: earnings,
-            chartData: monthlyData // Sending history for Recharts
-        });
-    });
+            const { data: leadData, error: leadError } = await supabase
+                .from('customers')
+                .insert([
+                    { business_name, owner_name, email: finalEmail, password: placeholderPass, phone, address, business_type, status: 'Lead' }
+                ])
+                .select();
+
+            if (leadError) throw leadError;
+            finalCustId = leadData[0].id;
+
+            // GENERATE QR
+            const qrDir = path.join(__dirname, '../uploads/qrcodes');
+            if (!fs.existsSync(qrDir)) fs.mkdirSync(qrDir, { recursive: true });
+
+            const qrContent = JSON.stringify({ id: finalCustId, type: 'customer', name: business_name, url: `https://app.aixos.com/customer/${finalCustId}` });
+            const qrFileName = `qr-lead-${finalCustId}-${Date.now()}.png`;
+            const qrFilePath = path.join(qrDir, qrFileName);
+
+            await QRCode.toFile(qrFilePath, qrContent, { color: { dark: '#000000', light: '#0000' } });
+
+            const qrUrl = `/uploads/qrcodes/${qrFileName}`;
+            await supabase.from('customers').update({ qr_code_url: qrUrl }).eq('id', finalCustId);
+        }
+
+        // Insert Visit
+        const { data: visitData, error: visitError } = await supabase
+            .from('visits')
+            .insert([
+                {
+                    agent_id,
+                    customer_id: finalCustId,
+                    customer_name: business_name,
+                    business_type,
+                    notes,
+                    risk_assessment,
+                    service_recommendations,
+                    follow_up_date
+                }
+            ])
+            .select();
+
+        if (visitError) throw visitError;
+        const visitId = visitData[0].id;
+
+        // Process Inventory
+        if (inventory) {
+            try {
+                const items = JSON.parse(inventory);
+                const inventoryRows = items.map(item => ({
+                    customer_id: finalCustId,
+                    visit_id: visitId,
+                    type: item.type,
+                    capacity: item.capacity,
+                    quantity: item.quantity,
+                    install_date: item.install_date || null,
+                    last_refill_date: item.last_refill_date || null,
+                    expiry_date: item.expiry_date || null,
+                    condition: item.condition,
+                    status: 'Valid'
+                }));
+
+                const { error: invError } = await supabase.from('extinguishers').insert(inventoryRows);
+                if (invError) throw invError;
+            } catch (e) {
+                console.error("Inventory process error", e);
+            }
+        }
+
+        res.status(201).json({ message: 'Visit logged successfully', visitId: visitId });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to log visit', details: err.message });
+    }
 });
 
-// Get Agent's Customers (CRM)
-router.get('/:id/my-customers', (req, res) => {
+// Get Agent Stats
+router.get('/:id/stats', async (req, res) => {
     const agentId = req.params.id;
-    // Select customers who have been visited by this agent
-    const sql = `
-        SELECT DISTINCT c.*, MAX(v.visit_date) as last_visit
-        FROM customers c
-        JOIN visits v ON c.id = v.customer_id
-        WHERE v.agent_id = ?
-        GROUP BY c.id
-        ORDER BY last_visit DESC
-    `;
 
-    db.all(sql, [agentId], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
+    try {
+        // Total Visits
+        const { count: totalVisits, error: vError } = await supabase
+            .from('visits')
+            .select('*', { count: 'exact', head: true })
+            .eq('agent_id', agentId);
+
+        if (vError) throw vError;
+
+        // Conversions
+        const { count: conversions, error: cError } = await supabase
+            .from('visits')
+            .select('*', { count: 'exact', head: true })
+            .eq('agent_id', agentId)
+            .eq('status', 'Completed');
+
+        if (cError) throw cError;
+
+        // Mock historical data
+        const monthlyData = [
+            { name: 'Jan', visits: 12, earnings: 400 },
+            { name: 'Feb', visits: 19, earnings: 750 },
+            { name: 'Mar', visits: 15, earnings: 600 },
+            { name: 'Apr', visits: 22, earnings: 1200 },
+            { name: 'May', visits: 30, earnings: 1500 },
+            { name: 'Jun', visits: 35, earnings: 1800 },
+        ];
+
+        const earnings = (conversions || 0) * 50;
+
+        res.json({
+            totalVisits: totalVisits || 0,
+            conversions: conversions || 0,
+            earnings: earnings,
+            chartData: monthlyData
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get Agent's Customers
+router.get('/:id/my-customers', async (req, res) => {
+    const agentId = req.params.id;
+
+    try {
+        // Supabase doesn't support complex JOIN + GROUP BY easily in one JS call without RPC.
+        // But we can fetch visits and join customers, or vice-versa.
+        // Alternative: Use raw SQL via RPC if needed, but let's try JS query.
+
+        const { data, error } = await supabase
+            .from('visits')
+            .select(`
+                customer_id,
+                visit_date,
+                customers (*)
+            `)
+            .eq('agent_id', agentId)
+            .order('visit_date', { ascending: false });
+
+        if (error) throw error;
+
+        // Unique by customer_id (only keep most recent visit)
+        const uniqueCustomers = [];
+        const seen = new Set();
+
+        data.forEach(v => {
+            if (!seen.has(v.customer_id)) {
+                seen.add(v.customer_id);
+                uniqueCustomers.push({
+                    ...v.customers,
+                    last_visit: v.visit_date
+                });
+            }
+        });
+
+        res.json(uniqueCustomers);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // UPDATE LOCATION
-router.post('/location', (req, res) => {
+router.post('/location', async (req, res) => {
     const { id, lat, lng } = req.body;
     const now = new Date().toISOString();
 
-    db.run(`UPDATE agents SET location_lat = ?, location_lng = ?, last_active = ? WHERE id = ?`,
-        [lat, lng, now, id],
-        (err) => {
-            if (err) return res.status(500).json({ error: 'DB Error' });
-            res.json({ message: 'Location updated' });
-        }
-    );
+    try {
+        const { error } = await supabase
+            .from('agents')
+            .update({ location_lat: lat, location_lng: lng, last_active: now })
+            .eq('id', id);
+
+        if (error) throw error;
+        res.json({ message: 'Location updated' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'DB Error' });
+    }
 });
 
 module.exports = router;
