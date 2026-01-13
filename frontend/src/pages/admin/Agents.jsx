@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import client from '../../api/client';
+import { supabase } from '../../supabaseClient';
 import { Check, X, User, Phone, MapPin, FileText, Shield } from 'lucide-react';
 
 const AgentManagement = () => {
@@ -10,8 +10,14 @@ const AgentManagement = () => {
     const fetchAgents = async () => {
         setLoading(true);
         try {
-            const res = await client.get(`/admin/agents?status=${activeTab}`);
-            setAgents(res.data);
+            const { data, error } = await supabase
+                .from('agents')
+                .select('*')
+                .eq('status', activeTab)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setAgents(data || []);
         } catch (err) {
             console.error(err);
         } finally {
@@ -24,18 +30,26 @@ const AgentManagement = () => {
     }, [activeTab]);
 
     const handleAction = async (id, action) => {
+        const newStatus = action === 'approve' ? 'Active' : 'Suspended';
         if (!window.confirm(`Are you sure you want to ${action} this agent?`)) return;
         try {
-            await client.put(`/admin/agents/${id}/${action}`);
+            const { error } = await supabase
+                .from('agents')
+                .update({ status: newStatus })
+                .eq('id', id);
+
+            if (error) throw error;
             fetchAgents(); // Refresh list
         } catch (err) {
-            alert(`Failed to ${action} agent`);
+            alert(`Failed to ${action} agent: ` + err.message);
         }
     };
 
     const getImageUrl = (filename) => {
-        if (!filename) return null;
-        return `http://localhost:5000/uploads/${filename}`;
+        // Since backend is gone, local uploads won't work.
+        // In a real app, you'd use Supabase Storage.
+        // This is a placeholder for the user to migrate their files to Supabase Storage.
+        return filename;
     };
 
     return (
@@ -60,7 +74,7 @@ const AgentManagement = () => {
 
             {loading ? (
                 <div className="text-center py-12">
-                    <div className="w-8 h-8 border-4 border-accent-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                     <p className="text-slate-500">Loading agents...</p>
                 </div>
             ) : agents.length === 0 ? (
@@ -91,7 +105,7 @@ const AgentManagement = () => {
                                         <p className="text-sm text-slate-500">{agent.email}</p>
                                     </div>
                                     <span className={`px-3 py-1 rounded-full text-xs font-bold ${agent.status === 'Active' ? 'bg-green-100 text-green-700' :
-                                            agent.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                                        agent.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
                                         }`}>
                                         {agent.status}
                                     </span>
@@ -119,7 +133,7 @@ const AgentManagement = () => {
                                             href={getImageUrl(agent.cnic_document)}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className="text-xs font-bold text-accent-600 hover:text-accent-700 flex items-center gap-1 bg-accent-50 px-3 py-1.5 rounded-lg transition-colors"
+                                            className="text-xs font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1 bg-primary-50 px-3 py-1.5 rounded-lg transition-colors"
                                         >
                                             <FileText size={14} /> View CNIC Document
                                         </a>

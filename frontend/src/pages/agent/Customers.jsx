@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import client from '../../api/client';
+import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { Search, MapPin, Phone, Calendar, ArrowRight, User, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -13,8 +13,34 @@ const Customers = () => {
     useEffect(() => {
         const fetchCustomers = async () => {
             try {
-                const res = await client.get(`/agents/${user.id}/my-customers`);
-                setCustomers(res.data);
+                // Fetch visits for this agent, including customer details
+                const { data, error } = await supabase
+                    .from('visits')
+                    .select(`
+                        customer_id,
+                        visit_date,
+                        customers (*)
+                    `)
+                    .eq('agent_id', user.id)
+                    .order('visit_date', { ascending: false });
+
+                if (error) throw error;
+
+                // Deduplicate by customer_id to only show unique customers with their latest visit
+                const uniqueCustomers = [];
+                const seen = new Set();
+
+                data.forEach(v => {
+                    if (v.customers && !seen.has(v.customer_id)) {
+                        seen.add(v.customer_id);
+                        uniqueCustomers.push({
+                            ...v.customers,
+                            last_visit: v.visit_date
+                        });
+                    }
+                });
+
+                setCustomers(uniqueCustomers);
             } catch (err) {
                 console.error("Failed to fetch customers", err);
             } finally {
@@ -42,7 +68,7 @@ const Customers = () => {
                         <input
                             type="text"
                             placeholder="Search business..."
-                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 outline-none transition-all"
+                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -51,7 +77,7 @@ const Customers = () => {
             </div>
 
             {loading ? (
-                <div className="text-center py-12">Loading...</div>
+                <div className="text-center py-12 text-slate-500">Loading Customers...</div>
             ) : filteredCustomers.length === 0 ? (
                 <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
                     <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
@@ -96,7 +122,7 @@ const Customers = () => {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-3 py-1 rounded-full text-xs font-bold ${customer.status === 'Active' ? 'bg-green-100 text-green-700' :
-                                                    customer.status === 'Lead' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+                                                customer.status === 'Lead' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
                                                 }`}>
                                                 {customer.status || 'Lead'}
                                             </span>
@@ -104,7 +130,7 @@ const Customers = () => {
                                         <td className="px-6 py-4 text-right">
                                             <Link
                                                 to={`/agent/visit?customerId=${customer.id}`}
-                                                className="inline-flex items-center justify-center p-2 text-accent-600 hover:bg-accent-50 rounded-lg transition-colors"
+                                                className="inline-flex items-center justify-center p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                                                 title="Log New Visit"
                                             >
                                                 <ArrowRight size={20} />

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import client from '../../api/client';
+import { supabase } from '../../supabaseClient';
 import { Search, Filter, Calendar, User, MapPin, Briefcase } from 'lucide-react';
 
 const AdminServices = () => {
@@ -11,12 +11,40 @@ const AdminServices = () => {
 
     const fetchData = async () => {
         try {
-            const [servicesRes, agentsRes] = await Promise.all([
-                client.get(`/admin/services?status=${statusFilter}`),
-                client.get('/admin/agents?status=Active')
-            ]);
-            setServices(servicesRes.data);
-            setAgents(agentsRes.data);
+            // Fetch services with customer and agent details
+            let query = supabase
+                .from('services')
+                .select(`
+                    *,
+                    customers (business_name, address),
+                    agents (name)
+                `);
+
+            if (statusFilter !== 'All') {
+                query = query.eq('status', statusFilter);
+            }
+
+            const { data: servicesData, error: sError } = await query.order('scheduled_date', { ascending: false });
+            if (sError) throw sError;
+
+            // Fetch active agents for assignment
+            const { data: agentsData, error: aError } = await supabase
+                .from('agents')
+                .select('id, name, territory')
+                .eq('status', 'Active');
+
+            if (aError) throw aError;
+
+            // Map data to match component expectations
+            const formattedServices = (servicesData || []).map(s => ({
+                ...s,
+                customer_name: s.customers?.business_name,
+                customer_address: s.customers?.address,
+                agent_name: s.agents?.name
+            }));
+
+            setServices(formattedServices);
+            setAgents(agentsData || []);
         } catch (err) {
             console.error("Failed to fetch data", err);
         } finally {
@@ -31,11 +59,16 @@ const AdminServices = () => {
     const handleAssign = async (serviceId, agentId) => {
         if (!agentId) return;
         try {
-            await client.put(`/admin/services/${serviceId}/assign`, { agentId });
+            const { error } = await supabase
+                .from('services')
+                .update({ agent_id: agentId, status: 'Scheduled' })
+                .eq('id', serviceId);
+
+            if (error) throw error;
             setAssigningId(null);
             fetchData(); // Refresh list
         } catch (err) {
-            alert('Assignment failed');
+            alert('Assignment failed: ' + err.message);
         }
     };
 
@@ -69,8 +102,8 @@ const AdminServices = () => {
                         key={status}
                         onClick={() => setStatusFilter(status)}
                         className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${statusFilter === status
-                                ? 'bg-slate-900 text-white shadow-lg'
-                                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                            ? 'bg-slate-900 text-white shadow-lg'
+                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
                             }`}
                     >
                         {status}

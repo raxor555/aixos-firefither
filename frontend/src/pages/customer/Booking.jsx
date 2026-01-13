@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import client from '../../api/client';
+import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { ArrowLeft, Wrench, RefreshCcw, Search, PlusCircle, Calendar, CheckCircle, Clock } from 'lucide-react';
 
 const ServiceOption = ({ icon: Icon, title, desc, price, selected, onClick }) => (
     <div
         onClick={onClick}
-        className={`relative p-6 rounded-3xl border-2 transition-all cursor-pointer flex flex-col h-full ${selected ? 'border-accent-500 bg-accent-50' : 'border-slate-100 bg-white hover:border-slate-200 hover:shadow-lg'}`}
+        className={`relative p-6 rounded-3xl border-2 transition-all cursor-pointer flex flex-col h-full ${selected ? 'border-primary-500 bg-primary-50' : 'border-slate-100 bg-white hover:border-slate-200 hover:shadow-lg'}`}
     >
         {selected && (
-            <div className="absolute top-4 right-4 text-accent-500">
-                <CheckCircle size={24} className="fill-accent-500 text-white" />
+            <div className="absolute top-4 right-4 text-primary-500">
+                <CheckCircle size={24} className="fill-primary-500 text-white" />
             </div>
         )}
-        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${selected ? 'bg-accent-200 text-accent-700' : 'bg-slate-100 text-slate-600'}`}>
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${selected ? 'bg-primary-200 text-primary-700' : 'bg-slate-100 text-slate-600'}`}>
             <Icon size={24} />
         </div>
         <h3 className="text-lg font-bold text-slate-900 mb-2">{title}</h3>
@@ -38,8 +38,13 @@ const Booking = () => {
     React.useEffect(() => {
         if (serviceType === 'refilling' && user) {
             setFetchingInventory(true);
-            client.get(`/customers/${user.id}/inventory`)
-                .then(res => setInventory(res.data))
+            supabase.from('extinguishers')
+                .select('*')
+                .eq('customer_id', user.id)
+                .then(({ data, error }) => {
+                    if (error) throw error;
+                    setInventory(data || []);
+                })
                 .catch(err => console.error(err))
                 .finally(() => setFetchingInventory(false));
         }
@@ -55,16 +60,23 @@ const Booking = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            await client.post('/customers/book', {
-                customerId: user.id,
-                serviceType,
-                notes,
-                date,
-                assetIds: selectedAssets
-            });
+            const { error } = await supabase
+                .from('services')
+                .insert([{
+                    customer_id: user.id,
+                    service_type: serviceType,
+                    notes,
+                    scheduled_date: date,
+                    status: 'Requested'
+                }]);
+
+            if (error) throw error;
+            // Note: service_items handling would go here if implemented
+
             navigate('/customer/dashboard');
         } catch (error) {
-            alert('Booking failed');
+            console.error(error);
+            alert('Booking failed: ' + error.message);
         } finally {
             setLoading(false);
         }
@@ -135,11 +147,11 @@ const Booking = () => {
                                         <div
                                             key={item.id}
                                             onClick={() => toggleAsset(item.id)}
-                                            className={`p-4 rounded-xl border-2 cursor-pointer flex items-center justify-between transition-all ${isSelected ? 'border-accent-500 bg-white shadow-md' : 'border-slate-200 bg-white hover:border-slate-300'
+                                            className={`p-4 rounded-xl border-2 cursor-pointer flex items-center justify-between transition-all ${isSelected ? 'border-primary-500 bg-white shadow-md' : 'border-slate-200 bg-white hover:border-slate-300'
                                                 }`}
                                         >
                                             <div className="flex items-center gap-3">
-                                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'bg-accent-500 border-accent-500' : 'border-slate-300'}`}>
+                                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'bg-primary-500 border-primary-500' : 'border-slate-300'}`}>
                                                     {isSelected && <CheckCircle size={14} className="text-white" />}
                                                 </div>
                                                 <div>

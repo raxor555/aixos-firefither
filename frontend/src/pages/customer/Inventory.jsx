@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import client from '../../api/client';
+import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { Search, Filter, QrCode, AlertTriangle, CheckCircle, FireExtinguisher, Calendar, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -14,8 +14,13 @@ const Inventory = () => {
     useEffect(() => {
         const fetchInventory = async () => {
             try {
-                const res = await client.get(`/customers/${user.id}/inventory`);
-                setInventory(res.data);
+                const { data, error } = await supabase
+                    .from('extinguishers')
+                    .select('*')
+                    .eq('customer_id', user.id);
+
+                if (error) throw error;
+                setInventory(data || []);
             } catch (err) {
                 console.error("Failed to fetch inventory", err);
             } finally {
@@ -60,14 +65,14 @@ const Inventory = () => {
                         <input
                             type="text"
                             placeholder="Search by ID or Type..."
-                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 outline-none transition-all"
+                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
                     <div className="relative">
                         <select
-                            className="appearance-none bg-white border border-slate-200 text-slate-700 py-3 pl-4 pr-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 cursor-pointer"
+                            className="appearance-none bg-white border border-slate-200 text-slate-700 py-3 pl-4 pr-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 cursor-pointer"
                             value={filterStatus}
                             onChange={(e) => setFilterStatus(e.target.value)}
                         >

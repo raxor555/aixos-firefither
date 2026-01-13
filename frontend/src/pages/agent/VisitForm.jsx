@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import client from '../../api/client';
+import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
+import QRCode from 'qrcode';
 import {
     Plus, Trash, Save, ArrowLeft, Building, FireExtinguisher, FileText,
     Search, Check, AlertTriangle, ArrowRight, UserPlus
@@ -34,8 +35,14 @@ const VisitForm = () => {
         setSearchQuery(query);
         if (query.length > 2) {
             try {
-                const res = await client.get(`/agents/customers/search?query=${query}`);
-                setSearchResults(res.data);
+                const { data, error } = await supabase
+                    .from('customers')
+                    .select('id, business_name, owner_name, email, phone, address, business_type')
+                    .or(`business_name.ilike.%${query}%,phone.ilike.%${query}%`)
+                    .limit(10);
+
+                if (error) throw error;
+                setSearchResults(data);
             } catch (err) { console.error(err); }
         } else {
             setSearchResults([]);
@@ -76,33 +83,80 @@ const VisitForm = () => {
     const handleSubmit = async () => {
         setLoading(true);
         try {
-            const payload = {
-                agent_id: user.id,
-                customer_id: formData.customerId,
-                business_name: formData.businessName,
-                owner_name: formData.ownerName,
-                email: formData.email,
-                phone: formData.phone,
-                address: formData.address,
-                business_type: formData.businessType,
-                notes: formData.notes,
-                risk_assessment: formData.riskAssessment,
-                service_recommendations: formData.serviceRecommendations,
-                follow_up_date: formData.followUpDate,
-                inventory: JSON.stringify(extinguishers)
-            };
+            let finalCustId = formData.customerId;
 
-            const formDataObj = new FormData();
-            Object.keys(payload).forEach(key => formDataObj.append(key, payload[key]));
+            // 1. Handle New Lead Customer
+            if (!finalCustId) {
+                const { data: leadData, error: leadError } = await supabase
+                    .from('customers')
+                    .insert([{
+                        business_name: formData.businessName,
+                        owner_name: formData.ownerName,
+                        email: formData.email || `lead-${Date.now()}@temp.com`,
+                        password: 'default-hashed-placeholder', // In real app, we'd handle this better
+                        phone: formData.phone,
+                        address: formData.address,
+                        business_type: formData.businessType,
+                        status: 'Lead'
+                    }])
+                    .select();
 
-            await client.post('/agents/visits', formDataObj, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+                if (leadError) throw leadError;
+                finalCustId = leadData[0].id;
+
+                // 2. Generate and Update QR Code (Frontend handle)
+                try {
+                    const qrContent = JSON.stringify({ id: finalCustId, type: 'customer', name: formData.businessName });
+                    const qrDataUrl = await QRCode.toDataURL(qrContent);
+                    // For now we'd need to upload to Supabase Storage to get a URL, 
+                    // but for this MVP refactor we'll just store the dataURL or skip.
+                    // Let's assume we skip storage for now but update the record.
+                    await supabase.from('customers').update({ qr_code_url: qrDataUrl }).eq('id', finalCustId);
+                } catch (qrErr) {
+                    console.error("QR Error", qrErr);
+                }
+            }
+
+            // 3. Insert Visit
+            const { data: visitData, error: visitError } = await supabase
+                .from('visits')
+                .insert([{
+                    agent_id: user.id,
+                    customer_id: finalCustId,
+                    customer_name: formData.businessName,
+                    business_type: formData.businessType,
+                    notes: formData.notes,
+                    risk_assessment: formData.riskAssessment,
+                    service_recommendations: formData.serviceRecommendations,
+                    follow_up_date: formData.followUpDate,
+                    status: 'Completed'
+                }])
+                .select();
+
+            if (visitError) throw visitError;
+            const visitId = visitData[0].id;
+
+            // 4. Insert Inventory
+            if (extinguishers.length > 0) {
+                const inventoryRows = extinguishers.map(item => ({
+                    customer_id: finalCustId,
+                    visit_id: visitId,
+                    type: item.type,
+                    capacity: item.capacity,
+                    quantity: item.quantity,
+                    expiry_date: item.expiryDate || null,
+                    condition: item.condition,
+                    status: 'Valid'
+                }));
+
+                const { error: invError } = await supabase.from('extinguishers').insert(inventoryRows);
+                if (invError) throw invError;
+            }
 
             navigate('/agent/dashboard');
         } catch (error) {
             console.error(error);
-            alert('Failed to submit visit log');
+            alert('Failed to submit visit log: ' + error.message);
         } finally {
             setLoading(false);
         }

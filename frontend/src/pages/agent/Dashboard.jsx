@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import client from '../../api/client';
+import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { MapPin, Users, CheckCircle, DollarSign, Clock, ArrowRight, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -43,8 +43,41 @@ const AgentDashboard = () => {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const res = await client.get(`/agents/${user.id}/stats`);
-                setStats(res.data);
+                // 1. Get Total Visits
+                const { count: totalVisits, error: vError } = await supabase
+                    .from('visits')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('agent_id', user.id);
+
+                if (vError) throw vError;
+
+                // 2. Get Conversions
+                const { count: conversions, error: cError } = await supabase
+                    .from('visits')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('agent_id', user.id)
+                    .eq('status', 'Completed');
+
+                if (cError) throw cError;
+
+                // Mock historical data (usually this would be a proper grouping query)
+                const monthlyData = [
+                    { name: 'Jan', visits: 12, earnings: 400 },
+                    { name: 'Feb', visits: 19, earnings: 750 },
+                    { name: 'Mar', visits: 15, earnings: 600 },
+                    { name: 'Apr', visits: 22, earnings: 1200 },
+                    { name: 'May', visits: 30, earnings: 1500 },
+                    { name: 'Jun', visits: 35, earnings: 1800 },
+                ];
+
+                const earnings = (conversions || 0) * 50;
+
+                setStats({
+                    totalVisits: totalVisits || 0,
+                    conversions: conversions || 0,
+                    earnings: earnings,
+                    chartData: monthlyData
+                });
             } catch (err) {
                 console.error("Failed to fetch stats", err);
             } finally {
@@ -59,7 +92,7 @@ const AgentDashboard = () => {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-display font-bold text-slate-900 mb-2">
-                        Welcome back, <span className="text-accent-500">{user?.name}</span>
+                        Welcome back, <span className="text-primary-500">{user?.name}</span>
                     </h1>
                     <p className="text-slate-500">Here's what's happening in your territory today.</p>
                 </div>
@@ -98,7 +131,7 @@ const AgentDashboard = () => {
                 <div className="lg:col-span-2 bg-white rounded-3xl shadow-soft border border-slate-100 p-8">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                            <TrendingUp size={22} className="text-accent-500" /> Performance Analytics
+                            <TrendingUp size={22} className="text-primary-500" /> Performance Analytics
                         </h3>
                     </div>
                     <div className="h-80 w-full">

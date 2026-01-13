@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import client from '../api/client';
+import { supabase } from '../supabaseClient';
+import bcrypt from 'bcryptjs';
 
 const AuthContext = createContext();
 
@@ -11,14 +12,12 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
-        const token = localStorage.getItem('token');
-        if (storedUser && token) {
+        if (storedUser) {
             try {
                 setUser(JSON.parse(storedUser));
             } catch (e) {
                 console.error("Failed to parse user from local storage", e);
                 localStorage.removeItem('user');
-                localStorage.removeItem('token');
             }
         }
         setLoading(false);
@@ -26,46 +25,91 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password, role) => {
         try {
-            const response = await client.post('/auth/login', { email, password, role });
-            const { token, user } = response.data;
-            localStorage.setItem('token', token);
-            localStorage.setItem('user', JSON.stringify(user));
-            // Also store role for easy access
+            let table = '';
+            if (role === 'agent') table = 'agents';
+            else if (role === 'customer') table = 'customers';
+            else if (role === 'admin') table = 'admins';
+            else return { success: false, error: 'Invalid role' };
+
+            const { data: user, error } = await supabase
+                .from(table)
+                .select('*')
+                .eq('email', email)
+                .single();
+
+            if (error || !user) {
+                return { success: false, error: 'User not found' };
+            }
+
+            // In a real serverless app, we'd use Supabase Auth.
+            // For this custom table setup, we use bcrypt (if available in browser) or check plain.
+            // NOTE: bcryptjs works in browser.
+            const passwordIsValid = bcrypt.compareSync(password, user.password);
+            if (!passwordIsValid) {
+                return { success: false, error: 'Invalid password' };
+            }
+
+            if (role === 'agent' && user.status !== 'Active') {
+                return { success: false, error: 'Account is pending approval. Please contact admin.' };
+            }
+
+            const userData = { ...user, role };
+            localStorage.setItem('user', JSON.stringify(userData));
             localStorage.setItem('role', role);
 
-            setUser({ ...user, role }); // Ensure role is in user object
+            setUser(userData);
             return { success: true };
         } catch (error) {
+            console.error("Login Error:", error);
             return {
                 success: false,
-                error: error.response?.data?.error || 'Login failed'
+                error: 'Login failed'
             };
         }
     };
 
     const register = async (role, data) => {
         try {
-            const endpoint = role === 'agent' ? '/auth/register/agent' : '/auth/register/customer';
+            // If data is FormData (for agent registration with files), we need to handle multi-step.
+            // For Option B, we'll try to convert FormData back to object for simple inserts, 
+            // or use Supabase Storage if files are involved.
 
-            // If sending FormData (for files), let Axios/Browser handle the Content-Type boundary
-            // We explicitely set it to undefined to override the default application/json
-            const config = data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+            let payload = {};
+            if (data instanceof FormData) {
+                data.forEach((value, key) => {
+                    payload[key] = value;
+                });
+            } else {
+                payload = data;
+            }
 
-            await client.post(endpoint, data, config);
+            const hashedPassword = bcrypt.hashSync(payload.password || 'default', 8);
+            payload.password = hashedPassword;
+
+            let table = role === 'agent' ? 'agents' : 'customers';
+
+            // Clean up payload fields that aren't in the DB schema if necessary
+            delete payload.confirmPassword;
+            if (role === 'agent') {
+                payload.status = 'Pending';
+                // Note: File handling for profile_photo/cnic_document would normally use Supabase Storage here.
+                // For now, we'll store the filename or skip it for brevity in this initial refactor.
+            }
+
+            const { error } = await supabase.from(table).insert([payload]);
+
+            if (error) throw error;
             return { success: true };
         } catch (error) {
-            console.error("Registration Error:", error.response?.data);
-            const serverError = error.response?.data;
-            const errorMessage = serverError?.details || serverError?.error || 'Registration failed';
+            console.error("Registration Error:", error);
             return {
                 success: false,
-                error: errorMessage
+                error: error.message || 'Registration failed'
             };
         }
     };
 
     const logout = () => {
-        localStorage.removeItem('token');
         localStorage.removeItem('user');
         localStorage.removeItem('role');
         setUser(null);

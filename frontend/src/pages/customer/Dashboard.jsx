@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import client from '../../api/client';
+import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { FireExtinguisher, AlertTriangle, CheckCircle, Plus, Calendar, Clock, ArrowRight } from 'lucide-react';
@@ -51,7 +51,7 @@ const InventoryCard = ({ item }) => {
                 </div>
             </div>
 
-            <button className="w-full py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:border-accent-500 hover:text-accent-600 transition-colors">
+            <button className="w-full py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:border-primary-500 hover:text-primary-600 transition-colors">
                 View Certificate
             </button>
         </div>
@@ -67,12 +67,25 @@ const CustomerDashboard = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [invRes, histRes] = await Promise.all([
-                    client.get(`/customers/${user.id}/inventory`),
-                    client.get(`/customers/${user.id}/history`)
-                ]);
-                setInventory(invRes.data);
-                setHistory(histRes.data);
+                // Fetch inventory directly from Supabase
+                const { data: invData, error: invError } = await supabase
+                    .from('extinguishers')
+                    .select('*')
+                    .eq('customer_id', user.id);
+
+                if (invError) throw invError;
+
+                // Fetch history directly from Supabase
+                const { data: histData, error: histError } = await supabase
+                    .from('services')
+                    .select('*')
+                    .eq('customer_id', user.id)
+                    .order('scheduled_date', { ascending: false });
+
+                if (histError) throw histError;
+
+                setInventory(invData || []);
+                setHistory(histData || []);
             } catch (err) {
                 console.error("Failed to fetch dashboard data", err);
             } finally {
@@ -102,11 +115,11 @@ const CustomerDashboard = () => {
             <div>
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                        <FireExtinguisher size={22} className="text-accent-500" /> Equipment Status
+                        <FireExtinguisher size={22} className="text-primary-500" /> Equipment Status
                     </h2>
                     <div className="flex items-center gap-4">
                         <span className="text-slate-500 text-sm font-medium">{inventory.length} Units Total</span>
-                        <Link to="/customer/inventory" className="text-sm text-accent-600 font-semibold hover:underline">View List</Link>
+                        <Link to="/customer/inventory" className="text-sm text-primary-600 font-semibold hover:underline">View List</Link>
                     </div>
                 </div>
 
@@ -123,8 +136,8 @@ const CustomerDashboard = () => {
                     )}
 
                     {/* Add New Placeholder/Promo */}
-                    <Link to="/customer/booking" className="rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center p-8 text-slate-400 hover:text-accent-500 hover:border-accent-300 hover:bg-accent-50/50 transition-all cursor-pointer group h-full min-h-[300px]">
-                        <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform group-hover:bg-white text-slate-300 group-hover:text-accent-500">
+                    <Link to="/customer/booking" className="rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center p-8 text-slate-400 hover:text-primary-500 hover:border-primary-300 hover:bg-primary-50/50 transition-all cursor-pointer group h-full min-h-[300px]">
+                        <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform group-hover:bg-white text-slate-300 group-hover:text-primary-500">
                             <Plus size={32} />
                         </div>
                         <span className="font-bold">Request New Equipment</span>
@@ -139,7 +152,7 @@ const CustomerDashboard = () => {
                         <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                             <Calendar size={20} className="text-blue-500" /> Recent Bookings
                         </h3>
-                        <Link to="/customer/history" className="text-sm text-accent-600 font-semibold hover:underline">View All</Link>
+                        <Link to="/customer/history" className="text-sm text-primary-600 font-semibold hover:underline">View All</Link>
                     </div>
 
                     <div className="space-y-4">
@@ -147,11 +160,11 @@ const CustomerDashboard = () => {
                             history.slice(0, 3).map((service) => (
                                 <div key={service.id} className="flex items-center p-4 rounded-2xl bg-slate-50 border border-slate-100">
                                     <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-blue-500 border border-slate-100 shadow-sm font-bold">
-                                        {new Date(service.scheduled_date).getDate()}
+                                        {service.scheduled_date ? new Date(service.scheduled_date).getDate() : '?'}
                                     </div>
                                     <div className="ml-4 flex-1">
                                         <h4 className="font-bold text-slate-900 capitalize">{service.service_type}</h4>
-                                        <p className="text-xs text-slate-500">{new Date(service.scheduled_date).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</p>
+                                        <p className="text-xs text-slate-500">{service.scheduled_date ? new Date(service.scheduled_date).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : 'Pending'}</p>
                                     </div>
                                     <span className={`text-xs px-2 py-1 rounded-lg font-bold ${service.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
                                         }`}>
@@ -172,7 +185,7 @@ const CustomerDashboard = () => {
                 </div>
 
                 <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 shadow-xl text-white relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-accent-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
                     <h3 className="text-lg font-bold mb-4 relative z-10">Need Help?</h3>
                     <p className="text-slate-300 mb-8 relative z-10 leading-relaxed">
                         Our support team is available 24/7 for emergency fire safety consultations.

@@ -25,30 +25,41 @@ A comprehensive Fire Safety Marketplace connecting Agents, Customers, and Admini
 
 ---
 
-## 🛠️ Setup & Installation
+## 🛠️ Setup & Installation (Serverless Version)
+
+This project has been migrated to a **Serverless Architecture** using Supabase. A local Node.js backend is no longer required for core functionality.
 
 ### Prerequisites
 - Node.js (v18 or higher)
 - npm
+- **Supabase Account**: You will need a Supabase project and the following credentials:
+  - `SUPABASE_URL`
+  - `SUPABASE_ANON_KEY`
 
-### 1. Backend Setup
-The backend runs on Node.js/Express with SQLite.
-
-```bash
-cd backend
-npm install
-npm run dev
-```
-*Server will start on `http://localhost:5000`*
+### 1. Supabase Initialization
+Ensure your Supabase project has the following tables:
+- `agents`: (id, name, email, password, status, role, phone, territory, cnic, profile_photo, cnic_document, lat, lng)
+- `customers`: (id, business_name, email, password, address, business_type, status, role, phone, agent_id, lat, lng)
+- `extinguishers`: (id, customer_id, type, capacity, install_date, expiry_date, status, qr_code)
+- `services`: (id, customer_id, agent_id, service_type, notes, scheduled_date, status, amount)
+- `visits`: (id, agent_id, customer_id, visit_date, status, notes, risk_assessment)
 
 ### 2. Frontend Setup
-The frontend is built with React + Vite + TailwindCSS.
+The frontend is built with React + Vite + TailwindCSS and talks directly to Supabase.
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+1.  **Configure Environment**:
+    Create a `frontend/.env` file:
+    ```env
+    VITE_SUPABASE_URL=your_supabase_url
+    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+    ```
+
+2.  **Install & Run**:
+    ```bash
+    cd frontend
+    npm install
+    npm run dev
+    ```
 *App will start on `http://localhost:5173`*
 
 ---

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import client from '../../api/client';
+import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { ShieldCheck, Download, FileText, CheckCircle, Printer } from 'lucide-react';
 
@@ -72,9 +72,14 @@ const Certificates = () => {
     useEffect(() => {
         const fetchInventory = async () => {
             try {
-                const res = await client.get(`/customers/${user.id}/inventory`);
+                const { data, error } = await supabase
+                    .from('extinguishers')
+                    .select('*')
+                    .eq('customer_id', user.id);
+
+                if (error) throw error;
                 // Only showing Valid items
-                const validItems = res.data.filter(item => new Date(item.expiry_date) > new Date());
+                const validItems = (data || []).filter(item => new Date(item.expiry_date) > new Date());
                 setInventory(validItems);
             } catch (err) {
                 console.error("Failed to fetch Inventory", err);

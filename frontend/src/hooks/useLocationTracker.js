@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import client from '../api/client';
+import { supabase } from '../supabaseClient';
 
 const useLocationTracker = () => {
     const { user } = useAuth();
@@ -12,21 +12,25 @@ const useLocationTracker = () => {
 
         console.log("Starting Location Tracker for", user.role);
 
-        const updateLocation = (lat, lng) => {
+        const updateLocation = async (lat, lng) => {
             const now = Date.now();
             // Throttle updates to every 30 seconds to save battery/bandwidth
             if (now - lastUpdateRef.current < 30000) return;
 
-            const endpoint = user.role === 'agent' ? '/agents/location' : '/customers/location';
+            const table = user.role === 'agent' ? 'agents' : 'customers';
 
-            client.post(endpoint, {
-                id: user.id,
-                lat,
-                lng
-            }).then(() => {
-                // console.log("Location synced");
+            try {
+                const { error } = await supabase
+                    .from(table)
+                    .update({ lat, lng })
+                    .eq('id', user.id);
+
+                if (error) throw error;
+                // console.log("Location synced to Supabase");
                 lastUpdateRef.current = now;
-            }).catch(err => console.error("Location sync failed", err));
+            } catch (err) {
+                console.error("Location sync failed", err);
+            }
         };
 
         if ('geolocation' in navigator) {

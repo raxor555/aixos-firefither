@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import client from '../../api/client';
+import { supabase } from '../../supabaseClient';
 import { Search, Filter, Mail, Phone, MapPin, Building } from 'lucide-react';
 
 const AdminCustomers = () => {
@@ -8,10 +8,22 @@ const AdminCustomers = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
-        client.get('/admin/customers')
-            .then(res => setCustomers(res.data))
-            .catch(err => console.error(err))
-            .finally(() => setLoading(false));
+        const fetchCustomers = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('customers')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                setCustomers(data || []);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchCustomers();
     }, []);
 
     const filteredCustomers = customers.filter(c =>

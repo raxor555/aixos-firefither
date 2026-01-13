@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import client from '../../api/client';
+import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { Calendar, CheckCircle, Clock, FileText, AlertCircle, Wrench } from 'lucide-react';
 
@@ -23,8 +23,8 @@ const ServiceTimeline = ({ status }) => {
                 return (
                     <div key={step} className="flex flex-col items-center gap-2 bg-white px-2">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${isCompleted
-                                ? 'bg-green-500 border-green-500 text-white'
-                                : 'bg-white border-slate-200 text-slate-300'
+                            ? 'bg-green-500 border-green-500 text-white'
+                            : 'bg-white border-slate-200 text-slate-300'
                             }`}>
                             {isCompleted ? <CheckCircle size={14} /> : <div className="w-2 h-2 rounded-full bg-slate-200" />}
                         </div>
@@ -48,8 +48,14 @@ const History = () => {
         const fetchHistory = async () => {
             if (!user) return;
             try {
-                const res = await client.get(`/customers/${user.id}/history`);
-                setServices(res.data);
+                const { data, error } = await supabase
+                    .from('services')
+                    .select('*')
+                    .eq('customer_id', user.id)
+                    .order('scheduled_date', { ascending: false });
+
+                if (error) throw error;
+                setServices(data || []);
             } catch (err) {
                 console.error("Failed to fetch history", err);
             } finally {

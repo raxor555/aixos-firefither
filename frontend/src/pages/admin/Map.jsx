@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import client from '../../api/client';
+import { supabase } from '../../supabaseClient';
 import L from 'leaflet';
 import { User, Briefcase } from 'lucide-react';
 import { renderToString } from 'react-dom/server';
@@ -20,17 +20,29 @@ const createIcon = (color, Icon) => {
 };
 
 const agentIcon = createIcon('#ef4444', Briefcase); // Brand Red
-const customerIcon = createIcon('#f97316', User); // Brand Orange (Accent)
+const customerIcon = createIcon('#3b82f6', User); // Brand Blue
 
 const GlobalMap = () => {
     const [data, setData] = useState({ agents: [], customers: [] });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        client.get('/admin/map-data')
-            .then(res => setData(res.data))
-            .catch(err => console.error("Map data error", err))
-            .finally(() => setLoading(false));
+        const fetchMapData = async () => {
+            try {
+                const { data: agentsData } = await supabase.from('agents').select('id, name, territory, lat, lng');
+                const { data: customersData } = await supabase.from('customers').select('id, business_name, address, lat, lng');
+
+                setData({
+                    agents: (agentsData || []).filter(a => a.lat && a.lng),
+                    customers: (customersData || []).filter(c => c.lat && c.lng)
+                });
+            } catch (err) {
+                console.error("Map data error", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchMapData();
     }, []);
 
     if (loading) return <div className="h-[600px] flex items-center justify-center bg-slate-50 text-slate-400">Loading Map Data...</div>;
@@ -80,7 +92,7 @@ const GlobalMap = () => {
                             <span className="text-xs text-slate-600">Agents</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
                             <span className="text-xs text-slate-600">Customers</span>
                         </div>
                     </div>

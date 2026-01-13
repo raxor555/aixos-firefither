@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import client from '../../api/client';
+import { supabase } from '../../supabaseClient';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Users, UserPlus, DollarSign, Activity, TrendingUp, AlertCircle, FileText } from 'lucide-react';
 
@@ -29,8 +29,28 @@ const AdminDashboard = () => {
     useEffect(() => {
         const loadData = async () => {
             try {
-                const statsRes = await client.get('/admin/stats');
-                setStats(statsRes.data);
+                // Fetch stats from Supabase
+                const { count: totalAgents } = await supabase.from('agents').select('*', { count: 'exact', head: true });
+                const { count: pendingAgents } = await supabase.from('agents').select('*', { count: 'exact', head: true }).eq('status', 'Pending');
+                const { count: totalCustomers } = await supabase.from('customers').select('*', { count: 'exact', head: true });
+                const { count: totalServices } = await supabase.from('services').select('*', { count: 'exact', head: true });
+
+                const revenueChart = [
+                    { name: 'Jan', revenue: 4000, services: 24 },
+                    { name: 'Feb', revenue: 3000, services: 18 },
+                    { name: 'Mar', revenue: 2000, services: 12 },
+                    { name: 'Apr', revenue: 2780, services: 20 },
+                    { name: 'May', revenue: 1890, services: 15 },
+                    { name: 'Jun', revenue: 5390, services: 30 },
+                ];
+
+                setStats({
+                    totalAgents: totalAgents || 0,
+                    pendingAgents: pendingAgents || 0,
+                    totalCustomers: totalCustomers || 0,
+                    totalServices: totalServices || 0,
+                    revenueChart
+                });
             } catch (err) {
                 console.error("Failed to load admin dashboard", err);
             } finally {
@@ -40,7 +60,7 @@ const AdminDashboard = () => {
         loadData();
     }, []);
 
-    if (loading) return <div className="p-10 text-center">Loading Dashboard...</div>;
+    if (loading) return <div className="p-10 text-center text-slate-500 font-medium">Loading Dashboard...</div>;
 
     return (
         <div className="space-y-8">
@@ -107,8 +127,9 @@ const AdminDashboard = () => {
                     </div>
                 </div>
 
-                <div className="bg-white p-8 rounded-3xl shadow-soft border border-slate-100">
-                    <h3 className="text-lg font-bold text-slate-900 mb-6">Activities</h3>
+                <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 shadow-xl text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                    <h3 className="text-lg font-bold mb-4 relative z-10">Activities</h3>
                     <div className="flex flex-col items-center justify-center h-[200px] text-slate-400">
                         <Activity size={32} className="mb-2" />
                         <p>No recent alerts</p>
