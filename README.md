@@ -94,6 +94,29 @@ npm run dev
 
 ---
 
+## 🚀 Deployment Instructions
+
+### 1. Frontend (Vercel)
+The frontend is optimized for **Vercel**.
+1.  Push your code to a GitHub repository.
+2.  Import the repository into Vercel.
+3.  Set the **Root Directory** to `frontend`.
+4.  Add an Environment Variable:
+    -   `VITE_API_URL`: `https://your-backend-url.com/api`
+5.  Vercel will automatically use the `vercel.json` for routing.
+
+### 2. Backend (Railway / Render)
+Because the backend uses **SQLite**, it requires persistent storage.
+1.  **Railway.app** is recommended.
+2.  Import the repository and set the **Root Directory** to `backend`.
+3.  **Crucial**: Add a "Volume" (Persistent Disk) and mount it to `/app` (or wherever your code resides) so the `database.sqlite` file is not lost on restart.
+4.  Set the `PORT` environment variable to `5000` (or Railway's default).
+
+### 3. Database Migration
+If you move to a production database (like PostgreSQL) in the future, you will need to update `db.js`. For now, ensure the `database.sqlite` is included in your initial commit to seed the Super Admin.
+
+---
+
 ## 📂 Project Structure
 
 - `frontend/`: React Application
