@@ -76,7 +76,6 @@ const VisitForm = () => {
     const handleSubmit = async () => {
         setLoading(true);
         try {
-            // Prepare payload
             const payload = {
                 agent_id: user.id,
                 customer_id: formData.customerId,
@@ -90,15 +89,14 @@ const VisitForm = () => {
                 risk_assessment: formData.riskAssessment,
                 service_recommendations: formData.serviceRecommendations,
                 follow_up_date: formData.followUpDate,
-                inventory: JSON.stringify(extinguishers) // Send as JSON string for simple handling backend side or FormData
+                inventory: JSON.stringify(extinguishers)
             };
 
-            // Should properly use FormData if we had photos, but JSON Body works for this iteration as configured in agent routes
             const formDataObj = new FormData();
             Object.keys(payload).forEach(key => formDataObj.append(key, payload[key]));
 
             await client.post('/agents/visits', formDataObj, {
-                headers: { 'Content-Type': 'multipart/form-data' } // Important for multer on backend
+                headers: { 'Content-Type': 'multipart/form-data' }
             });
 
             navigate('/agent/dashboard');
@@ -110,7 +108,6 @@ const VisitForm = () => {
         }
     };
 
-    // Render Steps
     return (
         <div className="max-w-5xl mx-auto space-y-6">
             {/* Header / Stepper */}
@@ -126,7 +123,7 @@ const VisitForm = () => {
                 </div>
                 <div className="flex gap-2">
                     {[1, 2, 3].map(i => (
-                        <div key={i} className={`w-3 h-3 rounded-full ${step >= i ? 'bg-accent-500' : 'bg-slate-200'}`}></div>
+                        <div key={i} className={`w-3 h-3 rounded-full ${step >= i ? 'bg-primary-500' : 'bg-slate-200'}`}></div>
                     ))}
                 </div>
             </div>
@@ -149,13 +146,12 @@ const VisitForm = () => {
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                                 <input
                                     type="text"
-                                    className="w-full pl-12 pr-4 py-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500 outline-none transition-all shadow-sm"
+                                    className="w-full pl-12 pr-4 py-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all shadow-sm"
                                     placeholder="Search by Business Name or Phone..."
                                     value={searchQuery}
                                     onChange={(e) => handleSearch(e.target.value)}
                                 />
                             </div>
-                            {/* Search Results Dropdown */}
                             {searchResults.length > 0 && (
                                 <div className="absolute top-full left-0 right-0 bg-white mt-2 rounded-xl shadow-xl border border-slate-100 z-10 max-h-60 overflow-y-auto">
                                     {searchResults.map(cust => (
@@ -164,7 +160,7 @@ const VisitForm = () => {
                                                 <p className="font-bold text-slate-900">{cust.business_name}</p>
                                                 <p className="text-sm text-slate-500">{cust.address}</p>
                                             </div>
-                                            <ArrowRight size={18} className="text-slate-300 group-hover:text-accent-500 transition-colors" />
+                                            <ArrowRight size={18} className="text-slate-300 group-hover:text-primary-500 transition-colors" />
                                         </div>
                                     ))}
                                 </div>
@@ -172,7 +168,7 @@ const VisitForm = () => {
 
                             <div className="mt-6 text-center">
                                 <span className="text-slate-500">Customer not found? </span>
-                                <button onClick={() => { setIsNewCustomer(true); setFormData({ ...formData, customerId: null }); }} className="font-bold text-accent-600 hover:underline">
+                                <button onClick={() => { setIsNewCustomer(true); setFormData({ ...formData, customerId: null }); }} className="font-bold text-primary-600 hover:underline">
                                     Create New Lead
                                 </button>
                             </div>
@@ -223,7 +219,7 @@ const VisitForm = () => {
 
                             <div className="flex justify-end mt-8">
                                 <button onClick={() => setStep(2)} className="btn-primary flex items-center gap-2">
-                                    Next: Site Assessment <ArrowRight size={18} />
+                                    Next: Inventory Builder <ArrowRight size={18} />
                                 </button>
                             </div>
                         </div>
@@ -231,63 +227,8 @@ const VisitForm = () => {
                 </div>
             )}
 
-            {/* Step 2: Site Assessment */}
+            {/* Step 2: Inventory Builder */}
             {step === 2 && (
-                <div className="bg-white p-8 rounded-3xl shadow-soft border border-slate-100 animate-fade-in">
-                    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-                        <div className="p-2 bg-yellow-100 rounded-lg text-yellow-600"><AlertTriangle size={24} /></div>
-                        <div>
-                            <h3 className="text-xl font-bold text-slate-900">Site Assessment</h3>
-                            <p className="text-sm text-slate-500">Evaluate risks and make service recommendations.</p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-6">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Observations & Risk Assessment</label>
-                            <textarea
-                                name="riskAssessment"
-                                value={formData.riskAssessment}
-                                onChange={handleInputChange}
-                                className="input-field h-32 resize-none"
-                                placeholder="E.g. Loose wiring near kitchen, blocked emergency exits, expired equipment found..."
-                            ></textarea>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Service Recommendations</label>
-                            <textarea
-                                name="serviceRecommendations"
-                                value={formData.serviceRecommendations}
-                                onChange={handleInputChange}
-                                className="input-field h-24 resize-none"
-                                placeholder="E.g. Install 2x 6kg CO2 near server room, Refill existing ABC cylinders..."
-                            ></textarea>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Internal Notes</label>
-                                <input name="notes" value={formData.notes} onChange={handleInputChange} className="input-field" placeholder="Private notes for admin/agent..." />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Follow-up Date</label>
-                                <input type="date" name="followUpDate" value={formData.followUpDate} onChange={handleInputChange} className="input-field" />
-                            </div>
-                        </div>
-
-                        <div className="flex justify-between mt-8 pt-6 border-t border-slate-100">
-                            <button onClick={() => setStep(1)} className="px-6 py-3 text-slate-500 font-medium hover:bg-slate-50 rounded-xl transition-colors">Back</button>
-                            <button onClick={() => setStep(3)} className="btn-primary flex items-center gap-2">
-                                Next: Inventory <ArrowRight size={18} />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Step 3: Inventory Builder */}
-            {step === 3 && (
                 <div className="bg-white p-8 rounded-3xl shadow-soft border border-slate-100 animate-fade-in">
                     <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
                         <div className="flex items-center gap-3">
@@ -359,10 +300,65 @@ const VisitForm = () => {
                     </div>
 
                     <div className="flex justify-between items-center pt-6 border-t border-slate-100">
-                        <button onClick={() => setStep(2)} className="px-6 py-3 text-slate-500 font-medium hover:bg-slate-50 rounded-xl transition-colors">Back</button>
-                        <button onClick={handleSubmit} disabled={loading} className="btn-primary flex items-center gap-2 px-8 py-3 text-lg shadow-xl shadow-accent-500/20">
-                            {loading ? 'Submitting...' : 'Finish & Save Log'} <Check size={20} />
+                        <button onClick={() => setStep(1)} className="px-6 py-3 text-slate-500 font-medium hover:bg-slate-50 rounded-xl transition-colors">Back</button>
+                        <button onClick={() => setStep(3)} className="btn-primary flex items-center gap-2">
+                            Next: Site Assessment <ArrowRight size={18} />
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Step 3: Site Assessment */}
+            {step === 3 && (
+                <div className="bg-white p-8 rounded-3xl shadow-soft border border-slate-100 animate-fade-in">
+                    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+                        <div className="p-2 bg-yellow-100 rounded-lg text-yellow-600"><AlertTriangle size={24} /></div>
+                        <div>
+                            <h3 className="text-xl font-bold text-slate-900">Site Assessment</h3>
+                            <p className="text-sm text-slate-500">Evaluate risks and make service recommendations.</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-6">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Observations & Risk Assessment</label>
+                            <textarea
+                                name="riskAssessment"
+                                value={formData.riskAssessment}
+                                onChange={handleInputChange}
+                                className="input-field h-32 resize-none"
+                                placeholder="E.g. Loose wiring near kitchen, blocked emergency exits, expired equipment found..."
+                            ></textarea>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Service Recommendations</label>
+                            <textarea
+                                name="serviceRecommendations"
+                                value={formData.serviceRecommendations}
+                                onChange={handleInputChange}
+                                className="input-field h-24 resize-none"
+                                placeholder="E.g. Install 2x 6kg CO2 near server room, Refill existing ABC cylinders..."
+                            ></textarea>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Internal Notes</label>
+                                <input name="notes" value={formData.notes} onChange={handleInputChange} className="input-field" placeholder="Private notes for admin/agent..." />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Follow-up Date</label>
+                                <input type="date" name="followUpDate" value={formData.followUpDate} onChange={handleInputChange} className="input-field" />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between mt-8 pt-6 border-t border-slate-100">
+                            <button onClick={() => setStep(2)} className="px-6 py-3 text-slate-500 font-medium hover:bg-slate-50 rounded-xl transition-colors">Back</button>
+                            <button onClick={handleSubmit} disabled={loading} className="btn-primary flex items-center gap-2 px-8 py-3 text-lg shadow-xl shadow-primary-500/20">
+                                {loading ? 'Submitting...' : 'Finish & Save Log'} <Check size={20} />
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

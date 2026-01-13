@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, LayoutDashboard, Calendar, FileText, User, ShoppingBag, Map, Shield } from 'lucide-react';
+import { LogOut, LayoutDashboard, Calendar, FileText, User, ShoppingBag, Map, Shield, Bookmark, FireExtinguisher, Clock } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useLocationTracker from '../hooks/useLocationTracker';
 
@@ -24,22 +24,26 @@ const Layout = ({ children }) => {
         const role = user?.role || localStorage.getItem('role');
         if (role === 'agent') {
             return [
-                { icon: LayoutDashboard, label: 'Overview', to: '/agent/dashboard' },
+                { icon: LayoutDashboard, label: 'Dashboard', to: '/agent/dashboard' },
+                { icon: User, label: 'My Customers', to: '/agent/customers' },
                 { icon: FileText, label: 'Log Visit', to: '/agent/visit' },
                 { icon: Calendar, label: 'Performance', to: '/agent/performance' },
             ];
         } else if (role === 'customer') {
             return [
-                { icon: LayoutDashboard, label: 'Inventory', to: '/customer/dashboard' },
+                { icon: LayoutDashboard, label: 'Safety Overview', to: '/customer/dashboard' },
+                { icon: FireExtinguisher, label: 'My Inventory', to: '/customer/inventory' },
                 { icon: ShoppingBag, label: 'Book Service', to: '/customer/booking' },
-                { icon: FileText, label: 'History', to: '/customer/history' },
+                { icon: Clock, label: 'Service History', to: '/customer/history' },
+                { icon: Shield, label: 'Certificates', to: '/customer/certificates' },
             ];
         } else if (role === 'admin') {
             return [
-                { icon: LayoutDashboard, label: 'Dashboard', to: '/admin/dashboard' },
-                { icon: User, label: 'Agents', to: '/admin/agents' },
-                { icon: ShoppingBag, label: 'Customers', to: '/admin/customers' },
-                { icon: Map, label: 'Territories', to: '/admin/map' },
+                { icon: LayoutDashboard, label: 'Admin Panel', to: '/admin/dashboard' },
+                { icon: User, label: 'Manage Agents', to: '/admin/agents' },
+                { icon: ShoppingBag, label: 'Total Customers', to: '/admin/customers' },
+                { icon: Bookmark, label: 'Service Queue', to: '/admin/services' },
+                { icon: Map, label: 'Global Map', to: '/admin/map' },
             ];
         }
         return [];

@@ -64,6 +64,7 @@ function App() {
                 <Routes>
                   <Route path="dashboard" element={<AgentDashboard />} />
                   <Route path="visit" element={<VisitForm />} />
+                  <Route path="customers" element={<Customers />} />
                   <Route path="performance" element={<div>Performance (Coming Soon)</div>} />
                 </Routes>
               </ProtectedRoute>
