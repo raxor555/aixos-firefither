@@ -128,7 +128,7 @@ const LoginPage = () => {
                         <div className="mt-8 pt-6 border-t border-slate-100 text-center">
                             <p className="text-sm text-slate-500">
                                 Don't have an account?{' '}
-                                <Link to={`/register/${role}`} className="font-semibold text-accent-600 hover:text-accent-700">
+                                <Link to={`/register/${role}`} className="font-semibold text-primary-600 hover:text-primary-700">
                                     Create one now
                                 </Link>
                             </p>

@@ -41,10 +41,21 @@ export const AuthProvider = ({ children }) => {
                 return { success: false, error: 'User not found' };
             }
 
-            // In a real serverless app, we'd use Supabase Auth.
-            // For this custom table setup, we use bcrypt (if available in browser) or check plain.
-            // NOTE: bcryptjs works in browser.
-            const passwordIsValid = bcrypt.compareSync(password, user.password);
+            // Fallback strategy for manual Supabase dashboard entries (plain text) vs hashed passwords
+            let passwordIsValid = false;
+            try {
+                // Check if it's a bcrypt hash and compare
+                if (user.password && user.password.startsWith('$2')) {
+                    passwordIsValid = bcrypt.compareSync(password, user.password);
+                } else {
+                    // Fallback to plain text comparison
+                    passwordIsValid = (password === user.password);
+                }
+            } catch (err) {
+                // In case of any error parsing the hash, try plain text
+                passwordIsValid = (password === user.password);
+            }
+
             if (!passwordIsValid) {
                 return { success: false, error: 'Invalid password' };
             }

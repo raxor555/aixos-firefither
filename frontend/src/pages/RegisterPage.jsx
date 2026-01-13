@@ -158,7 +158,7 @@ const RegisterPage = () => {
                                                 {files.profile_photo ? (
                                                     <img src={URL.createObjectURL(files.profile_photo)} alt="Preview" className="h-full w-full object-cover" />
                                                 ) : (
-                                                    <Upload size={18} className="text-slate-400 group-hover:text-accent-500" />
+                                                    <Upload size={18} className="text-slate-400 group-hover:text-primary-500" />
                                                 )}
                                             </div>
                                         </div>
@@ -171,7 +171,7 @@ const RegisterPage = () => {
                                         {/* Phone Input Custom */}
                                         <div className="col-span-1">
                                             <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
-                                            <div className="flex rounded-xl border border-slate-200 overflow-hidden focus-within:ring-2 focus-within:ring-accent-500/20 focus-within:border-accent-500">
+                                            <div className="flex rounded-xl border border-slate-200 overflow-hidden focus-within:ring-2 focus-within:ring-primary-500/20 focus-within:border-primary-500">
                                                 <div className="bg-slate-50 px-3 py-3 text-slate-500 border-r border-slate-200 font-medium select-none min-w-[3.5rem] flex items-center justify-center">
                                                     {loadingIp ? '...' : countryCode}
                                                 </div>
@@ -190,7 +190,7 @@ const RegisterPage = () => {
 
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Upload CNIC (Front)</label>
-                                        <div className="relative block w-full rounded-xl border-dashed border-2 border-slate-300 p-4 text-center hover:border-accent-500 hover:bg-accent-50/10 transition-all cursor-pointer">
+                                        <div className="relative block w-full rounded-xl border-dashed border-2 border-slate-300 p-4 text-center hover:border-primary-500 hover:bg-primary-50/10 transition-all cursor-pointer">
                                             <input type="file" name="cnic_document" onChange={handleChange} accept="image/*,.pdf" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required />
                                             {files.cnic_document ? (
                                                 <div className="flex items-center justify-center gap-2 text-green-600 font-medium">
@@ -227,7 +227,7 @@ const RegisterPage = () => {
                                                 checked={formData.terms_accepted}
                                                 onChange={handleChange}
                                                 required
-                                                className="w-5 h-5 text-accent-600 border-slate-300 rounded focus:ring-accent-500"
+                                                className="w-5 h-5 text-primary-600 border-slate-300 rounded focus:ring-primary-500"
                                             />
                                         </div>
                                         <div className="ml-1 text-sm">
@@ -246,7 +246,7 @@ const RegisterPage = () => {
                                     {/* Phone Input Custom Customer */}
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
-                                        <div className="flex rounded-xl border border-slate-200 overflow-hidden focus-within:ring-2 focus-within:ring-accent-500/20 focus-within:border-accent-500">
+                                        <div className="flex rounded-xl border border-slate-200 overflow-hidden focus-within:ring-2 focus-within:ring-primary-500/20 focus-within:border-primary-500">
                                             <div className="bg-slate-50 px-3 py-3 text-slate-500 border-r border-slate-200 font-medium select-none min-w-[3.5rem] flex items-center justify-center">
                                                 {loadingIp ? '...' : countryCode}
                                             </div>
@@ -282,7 +282,7 @@ const RegisterPage = () => {
                         <div className="mt-8 pt-6 border-t border-slate-100 text-center">
                             <p className="text-sm text-slate-500">
                                 Already have an account?{' '}
-                                <Link to={`/login/${role}`} className="font-semibold text-accent-600 hover:text-accent-700">
+                                <Link to={`/login/${role}`} className="font-semibold text-primary-600 hover:text-primary-700">
                                     Sign in
                                 </Link>
                             </p>
