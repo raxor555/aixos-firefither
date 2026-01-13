@@ -33,22 +33,54 @@ const AdminDashboard = () => {
                 const { count: totalAgents } = await supabase.from('agents').select('*', { count: 'exact', head: true });
                 const { count: pendingAgents } = await supabase.from('agents').select('*', { count: 'exact', head: true }).eq('status', 'Pending');
                 const { count: totalCustomers } = await supabase.from('customers').select('*', { count: 'exact', head: true });
-                const { count: totalServices } = await supabase.from('services').select('*', { count: 'exact', head: true });
+                const { data: servicesData, error: sError } = await supabase
+                    .from('services')
+                    .select('id, service_type, scheduled_date, status')
+                    .eq('status', 'Completed');
 
-                const revenueChart = [
-                    { name: 'Jan', revenue: 4000, services: 24 },
-                    { name: 'Feb', revenue: 3000, services: 18 },
-                    { name: 'Mar', revenue: 2000, services: 12 },
-                    { name: 'Apr', revenue: 2780, services: 20 },
-                    { name: 'May', revenue: 1890, services: 15 },
-                    { name: 'Jun', revenue: 5390, services: 30 },
-                ];
+                if (sError) throw sError;
+
+                const pricing = {
+                    'inspection': 50,
+                    'refilling': 65,
+                    'installation': 150
+                };
+
+                let totalRevenue = 0;
+                const monthlyData = {};
+
+                (servicesData || []).forEach(s => {
+                    const price = pricing[s.service_type] || 50;
+                    totalRevenue += price;
+
+                    const date = new Date(s.scheduled_date || Date.now());
+                    const month = date.toLocaleString('default', { month: 'short' });
+
+                    if (!monthlyData[month]) {
+                        monthlyData[month] = { name: month, revenue: 0, services: 0 };
+                    }
+                    monthlyData[month].revenue += price;
+                    monthlyData[month].services += 1;
+                });
+
+                // Sort and ensure 6 months
+                const monthsInOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const revenueChart = monthsInOrder
+                    .filter(m => monthlyData[m])
+                    .map(m => monthlyData[m])
+                    .slice(-6);
+
+                // If empty, show some zeros
+                if (revenueChart.length === 0) {
+                    revenueChart.push({ name: 'current', revenue: 0, services: 0 });
+                }
 
                 setStats({
                     totalAgents: totalAgents || 0,
                     pendingAgents: pendingAgents || 0,
                     totalCustomers: totalCustomers || 0,
-                    totalServices: totalServices || 0,
+                    totalServices: servicesData?.length || 0,
+                    totalRevenue,
                     revenueChart
                 });
             } catch (err) {
@@ -77,8 +109,8 @@ const AdminDashboard = () => {
                 <StatCard
                     icon={DollarSign}
                     title="Total Revenue"
-                    value="$15,400"
-                    subtext="+12% vs last month"
+                    value={`$${stats?.totalRevenue?.toLocaleString() || 0}`}
+                    subtext="Real-time data"
                     color="bg-emerald-500"
                 />
                 <StatCard

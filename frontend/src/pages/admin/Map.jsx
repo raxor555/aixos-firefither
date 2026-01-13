@@ -25,6 +25,23 @@ const customerIcon = createIcon('#3b82f6', User); // Brand Blue
 const GlobalMap = () => {
     const [data, setData] = useState({ agents: [], customers: [] });
     const [loading, setLoading] = useState(true);
+    const [mapCenter, setMapCenter] = useState([40.7128, -74.0060]); // Default NYC
+    const [hasLocation, setHasLocation] = useState(false);
+
+    useEffect(() => {
+        // Get user's current location to center map
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    setMapCenter([position.coords.latitude, position.coords.longitude]);
+                    setHasLocation(true);
+                },
+                (error) => {
+                    console.error("Geolocation error:", error);
+                }
+            );
+        }
+    }, []);
 
     useEffect(() => {
         const fetchMapData = async () => {
@@ -55,11 +72,17 @@ const GlobalMap = () => {
             </div>
 
             <div className="h-[600px] rounded-3xl overflow-hidden border border-slate-200 shadow-soft relative z-0">
-                <MapContainer center={[40.7128, -74.0060]} zoom={13} style={{ height: '100%', width: '100%' }}>
+                <MapContainer center={mapCenter} zoom={hasLocation ? 13 : 4} style={{ height: '100%', width: '100%' }} key={`${mapCenter[0]}-${mapCenter[1]}`}>
                     <TileLayer
                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     />
+
+                    {hasLocation && (
+                        <Marker position={mapCenter} icon={createIcon('#10B981', User)}>
+                            <Popup>You are here</Popup>
+                        </Marker>
+                    )}
 
                     {data.agents.map(agent => (
                         <Marker key={`a-${agent.id}`} position={[agent.lat, agent.lng]} icon={agentIcon}>
