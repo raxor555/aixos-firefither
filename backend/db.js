@@ -37,7 +37,7 @@ function initDb() {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             business_name TEXT NOT NULL,
             owner_name TEXT,
-            email TEXT UNIQUE NOT NULL,
+            email TEXT CHECK(email IS NOT NULL OR email != '') , -- Can be null now, handled by logic to ensure some uniqueness or dummy
             password TEXT NOT NULL, // Can be hash of 'default' for leads
             phone TEXT,
             address TEXT,
@@ -45,13 +45,15 @@ function initDb() {
             status TEXT DEFAULT 'Active' CHECK(status IN ('Active', 'Lead', 'Inactive')),
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             location_lat REAL,
-            location_lng REAL
+            location_lng REAL,
+            qr_code_url TEXT
         )`, (err) => {
             if (!err) {
                 const cols = [
                     'ALTER TABLE customers ADD COLUMN status TEXT DEFAULT "Active"',
                     'ALTER TABLE customers ADD COLUMN location_lat REAL',
-                    'ALTER TABLE customers ADD COLUMN location_lng REAL'
+                    'ALTER TABLE customers ADD COLUMN location_lng REAL',
+                    'ALTER TABLE customers ADD COLUMN qr_code_url TEXT'
                 ];
                 cols.forEach(q => db.run(q, () => { }));
             }
@@ -151,6 +153,14 @@ function initDb() {
                 });
             }
         });
+
+        // Add Migrations for Agents Table (Location)
+        const agentCols = [
+            'ALTER TABLE agents ADD COLUMN location_lat REAL',
+            'ALTER TABLE agents ADD COLUMN location_lng REAL',
+            'ALTER TABLE agents ADD COLUMN last_active DATETIME'
+        ];
+        agentCols.forEach(q => db.run(q, () => { }));
 
     });
 }

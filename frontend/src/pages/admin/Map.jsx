@@ -19,8 +19,8 @@ const createIcon = (color, Icon) => {
     });
 };
 
-const agentIcon = createIcon('#3b82f6', Briefcase); // Blue
-const customerIcon = createIcon('#ef4444', User); // Red
+const agentIcon = createIcon('#ef4444', Briefcase); // Brand Red
+const customerIcon = createIcon('#f97316', User); // Brand Orange (Accent)
 
 const GlobalMap = () => {
     const [data, setData] = useState({ agents: [], customers: [] });
@@ -71,20 +71,20 @@ const GlobalMap = () => {
                             </Popup>
                         </Marker>
                     ))}
-                </MapContainer>
 
-                {/* Legend */}
-                <div className="absolute bottom-6 left-6 bg-white p-4 rounded-2xl shadow-lg z-[1000] border border-slate-100">
-                    <h4 className="font-bold text-slate-900 mb-2 text-sm">Legend</h4>
-                    <div className="flex items-center gap-2 mb-1">
-                        <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                        <span className="text-xs text-slate-600">Agents</span>
+                    {/* Legend */}
+                    <div className="absolute bottom-6 left-6 bg-white p-4 rounded-2xl shadow-lg z-[1000] border border-slate-100">
+                        <h4 className="font-bold text-slate-900 mb-2 text-sm">Legend</h4>
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                            <span className="text-xs text-slate-600">Agents</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                            <span className="text-xs text-slate-600">Customers</span>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                        <span className="text-xs text-slate-600">Customers</span>
-                    </div>
-                </div>
+                </MapContainer>
             </div>
         </div>
     );

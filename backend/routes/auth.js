@@ -49,13 +49,63 @@ router.post('/register/agent', upload.fields([{ name: 'profile_photo', maxCount:
 // REGISTER CUSTOMER
 router.post('/register/customer', (req, res) => {
     const { business_name, owner_name, email, password, phone, address, business_type } = req.body;
+    const bcrypt = require('bcryptjs');
+    const QRCode = require('qrcode');
+    const fs = require('fs');
+
     const hashedPassword = bcrypt.hashSync(password, 8);
 
+    // Handle Optional Email
+    let finalEmail = email;
+    if (!finalEmail || finalEmail.trim() === '') {
+        finalEmail = `no-email-${Date.now()}-${Math.floor(Math.random() * 1000)}@aixos-placeholder.com`;
+    }
+
     db.run(`INSERT INTO customers (business_name, owner_name, email, password, phone, address, business_type) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [business_name, owner_name, email, hashedPassword, phone, address, business_type],
+        [business_name, owner_name, finalEmail, hashedPassword, phone, address, business_type],
         function (err) {
-            if (err) return res.status(500).json({ error: 'Error registering customer' });
-            res.status(201).json({ message: 'Customer registered successfully', id: this.lastID });
+            if (err) {
+                console.error("Register Error:", err);
+                return res.status(500).json({ error: 'Error registering customer', details: err.message });
+            }
+
+            const customerId = this.lastID;
+
+            // Generate QR Code
+            const qrDir = path.join(__dirname, '../uploads/qrcodes');
+            if (!fs.existsSync(qrDir)) {
+                fs.mkdirSync(qrDir, { recursive: true });
+            }
+
+            const qrContent = JSON.stringify({
+                id: customerId,
+                type: 'customer',
+                name: business_name,
+                url: `https://app.aixos.com/customer/${customerId}`
+            });
+
+            const qrFileName = `qr-customer-${customerId}-${Date.now()}.png`;
+            const qrFilePath = path.join(qrDir, qrFileName);
+
+            QRCode.toFile(qrFilePath, qrContent, {
+                color: {
+                    dark: '#000000',  // Blue dots
+                    light: '#0000' // Transparent background
+                }
+            }, function (err) {
+                if (err) {
+                    console.error("QR Gen Error:", err);
+                    // Proceed without QR, or fail? Proceed.
+                    return res.status(201).json({ message: 'Customer registered (QR failed)', id: customerId });
+                }
+
+                const qrUrl = `/uploads/qrcodes/${qrFileName}`;
+
+                db.run(`UPDATE customers SET qr_code_url = ? WHERE id = ?`, [qrUrl, customerId], (err) => {
+                    if (err) console.error("QR Update Error:", err);
+                    res.status(201).json({ message: 'Customer registered successfully', id: customerId, qr_code_url: qrUrl });
+                });
+            });
         }
     );
 });

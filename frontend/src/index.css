@@ -5,18 +5,18 @@
   --font-sans: "Inter", sans-serif;
   --font-display: "Plus Jakarta Sans", sans-serif;
 
-  /* Colors - Primary (Sky/Blue) */
-  --color-primary-50: #f0f9ff;
-  --color-primary-100: #e0f2fe;
-  --color-primary-200: #bae6fd;
-  --color-primary-300: #7dd3fc;
-  --color-primary-400: #38bdf8;
-  --color-primary-500: #0ea5e9;
-  --color-primary-600: #0284c7;
-  --color-primary-700: #0369a1;
-  --color-primary-800: #075985;
-  --color-primary-900: #0c4a6e;
-  --color-primary-950: #082f49;
+  /* Colors - Primary (Red) */
+  --color-primary-50: #fef2f2;
+  --color-primary-100: #fee2e2;
+  --color-primary-200: #fecaca;
+  --color-primary-300: #fca5a5;
+  --color-primary-400: #f87171;
+  --color-primary-500: #ef4444;
+  --color-primary-600: #dc2626;
+  --color-primary-700: #b91c1c;
+  --color-primary-800: #991b1b;
+  --color-primary-900: #7f1d1d;
+  --color-primary-950: #450a0a;
 
   /* Colors - Accent (Orange) */
   --color-accent-50: #fff7ed;
@@ -78,7 +78,7 @@
   }
 
   .btn-primary {
-    @apply bg-accent-500 hover:bg-accent-600 text-white font-medium px-6 py-3 rounded-xl shadow-lg shadow-accent-500/30 transition-all active:scale-95;
+    @apply bg-primary-500 hover:bg-primary-600 text-white font-medium px-6 py-3 rounded-xl shadow-lg shadow-primary-500/30 transition-all active:scale-95;
   }
 
   .btn-secondary {
@@ -86,10 +86,10 @@
   }
 
   .btn-outline {
-    @apply border-2 border-slate-200 hover:border-accent-500 hover:text-accent-600 text-slate-600 font-medium px-6 py-3 rounded-xl transition-all;
+    @apply border-2 border-slate-200 hover:border-primary-500 hover:text-primary-600 text-slate-600 font-medium px-6 py-3 rounded-xl transition-all;
   }
 
   .input-field {
-    @apply w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 outline-none transition-all duration-200 bg-white;
+    @apply w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all duration-200 bg-white;
   }
 }

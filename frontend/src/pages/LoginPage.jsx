@@ -53,7 +53,7 @@ const LoginPage = () => {
                         <p className="text-xl text-white/80 max-w-md">{sub}</p>
                     </div>
                     <div className="text-sm text-white/40">
-                        &copy; 2026 Aixos FireFighter. all rights reserved.
+                        &copy; 2026 AiXOS FireFighter. all rights reserved.
                     </div>
                 </div>
             </div>

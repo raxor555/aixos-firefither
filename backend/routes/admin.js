@@ -81,15 +81,15 @@ router.get('/map-data', (req, res) => {
         customers: []
     };
 
-    db.all(`SELECT id, name, email, territory, status FROM agents WHERE status='Active'`, (err, agents) => {
+    db.all(`SELECT id, name, email, territory, status, location_lat, location_lng, last_active FROM agents WHERE status='Active'`, (err, agents) => {
         if (err) return res.status(500).json({ error: err.message });
 
         // Mocking random locations for agents based on 'Territory' roughly
         // In real app, agents would have a live location or assigned center
         data.agents = agents.map(a => ({
             ...a,
-            lat: 40.7128 + (Math.random() * 0.1 - 0.05),
-            lng: -74.0060 + (Math.random() * 0.1 - 0.05),
+            lat: a.location_lat || (40.7128 + (Math.random() * 0.1 - 0.05)),
+            lng: a.location_lng || (-74.0060 + (Math.random() * 0.1 - 0.05)),
             type: 'agent'
         }));
 

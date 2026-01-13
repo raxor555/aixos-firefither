@@ -16,7 +16,7 @@ const AdminCustomers = () => {
 
     const filteredCustomers = customers.filter(c =>
         c.business_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.email.toLowerCase().includes(searchTerm.toLowerCase())
+        (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     return (
@@ -68,7 +68,7 @@ const AdminCustomers = () => {
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="text-sm text-slate-700 flex items-center gap-2">
-                                            <Mail size={12} className="text-slate-400" /> {customer.email}
+                                            <Mail size={12} className="text-slate-400" /> {customer.email || 'No Email'}
                                         </div>
                                         {customer.phone && (
                                             <div className="text-xs text-slate-500 flex items-center gap-2 mt-1">

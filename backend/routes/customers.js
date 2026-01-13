@@ -71,4 +71,16 @@ router.post('/inventory', (req, res) => {
     );
 });
 
+// UPDATE LOCATION
+router.post('/location', (req, res) => {
+    const { id, lat, lng } = req.body;
+    db.run(`UPDATE customers SET location_lat = ?, location_lng = ? WHERE id = ?`,
+        [lat, lng, id],
+        (err) => {
+            if (err) return res.status(500).json({ error: 'DB Error' });
+            res.json({ message: 'Location updated' });
+        }
+    );
+});
+
 module.exports = router;

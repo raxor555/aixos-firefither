@@ -2,9 +2,10 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { LogOut, LayoutDashboard, Calendar, FileText, User, ShoppingBag, Map, Shield } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import useLocationTracker from '../hooks/useLocationTracker';
 
 const SidebarItem = ({ icon: Icon, label, to, active }) => (
-    <Link to={to} className={`flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-200 group ${active ? 'bg-accent-500 text-white shadow-lg shadow-accent-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+    <Link to={to} className={`flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-200 group ${active ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
         <Icon size={20} className={`transition-colors ${active ? 'text-white' : 'text-slate-500 group-hover:text-white'}`} />
         <span className="font-medium tracking-wide text-sm">{label}</span>
     </Link>
@@ -14,6 +15,9 @@ const Layout = ({ children }) => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Active Location Tracking
+    useLocationTracker();
 
     // Define navigation items based on role
     const getNavItems = () => {
@@ -50,15 +54,15 @@ const Layout = ({ children }) => {
         <div className="flex h-screen bg-slate-50 font-sans">
             {/* Sidebar */}
             <div className="w-72 bg-slate-900 border-r border-slate-800 shadow-xl hidden md:flex flex-col relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-accent-500/10 rounded-full blur-3xl"></div>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl"></div>
 
                 <div className="p-8 relative z-10">
                     <div className="flex items-center gap-3 mb-1">
-                        <div className="p-2 bg-accent-500 rounded-lg shadow-lg shadow-accent-500/20">
+                        <div className="p-2 bg-primary-500 rounded-lg shadow-lg shadow-primary-500/20">
                             <Shield size={24} className="text-white" />
                         </div>
                         <h1 className="text-2xl font-display font-extrabold text-white tracking-tight">
-                            Aixos<span className="text-accent-500">.</span>
+                            AiXOS<span className="text-primary-500">.</span>
                         </h1>
                     </div>
                 </div>
@@ -76,7 +80,7 @@ const Layout = ({ children }) => {
 
                 <div className="p-4 border-t border-slate-800 bg-slate-900/50">
                     <div className="flex items-center gap-3 mb-4 px-4 p-3 bg-slate-800 rounded-2xl border border-slate-700/50">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent-500 to-orange-600 flex items-center justify-center text-white font-bold shadow-md">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-red-600 flex items-center justify-center text-white font-bold shadow-md">
                             {user?.name?.[0] || 'U'}
                         </div>
                         <div className="overflow-hidden">
@@ -100,10 +104,10 @@ const Layout = ({ children }) => {
 
                 <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 md:hidden p-4 flex justify-between items-center z-20 sticky top-0">
                     <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-accent-500 rounded">
+                        <div className="p-1.5 bg-primary-500 rounded">
                             <Shield size={18} className="text-white" />
                         </div>
-                        <h1 className="text-lg font-bold text-slate-900">Aixos</h1>
+                        <h1 className="text-lg font-bold text-slate-900">AiXOS</h1>
                     </div>
                     <button onClick={handleLogout} className="text-slate-500"><LogOut size={20} /></button>
                 </header>

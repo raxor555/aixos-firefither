@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { AlertCircle, ArrowLeft, Upload, FileText, CheckSquare } from 'lucide-react';
@@ -10,11 +10,15 @@ const RegisterPage = () => {
 
     // Form Data State
     const [formData, setFormData] = useState({
-        name: '', email: '', password: '', phone: '',
+        name: '', email: '', password: '',
+        phoneLocal: '', // 9 Digits
         cnic: '', territory: 'Retail',
         business_name: '', owner_name: '', address: '', business_type: 'Retail',
         terms_accepted: false
     });
+
+    const [countryCode, setCountryCode] = useState('+92'); // Default fallback
+    const [loadingIp, setLoadingIp] = useState(true);
 
     // Separate state for files
     const [files, setFiles] = useState({
@@ -25,6 +29,19 @@ const RegisterPage = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
+    useEffect(() => {
+        // Detect IP and Country Code
+        fetch('https://ipwho.is/')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.calling_code) {
+                    setCountryCode('+' + data.calling_code);
+                }
+            })
+            .catch(err => console.error("IP Detect Error", err))
+            .finally(() => setLoadingIp(false));
+    }, []);
+
     const handleChange = (e) => {
         const { name, value, type, checked, files: fileInput } = e.target;
 
@@ -32,6 +49,10 @@ const RegisterPage = () => {
             setFiles(prev => ({ ...prev, [name]: fileInput[0] }));
         } else if (type === 'checkbox') {
             setFormData(prev => ({ ...prev, [name]: checked }));
+        } else if (name === 'phoneLocal') {
+            // Enforce 9 digits only
+            const cleaned = value.replace(/\D/g, '').slice(0, 9);
+            setFormData(prev => ({ ...prev, [name]: cleaned }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
         }
@@ -44,21 +65,33 @@ const RegisterPage = () => {
 
         try {
             let dataToSend;
+
+            // Combine Phone
+            const fullPhone = `${countryCode}${formData.phoneLocal}`;
+
+            // Construct Base Data
+            const baseData = {
+                ...formData,
+                phone: fullPhone
+            };
+
+            delete baseData.phoneLocal; // Remove temp field
+
             const isAgent = role === 'agent';
 
             if (isAgent) {
                 // Use FormData for Agent (File Uploads)
                 const formDataObj = new FormData();
-                Object.keys(formData).forEach(key => {
-                    formDataObj.append(key, formData[key]);
+                Object.keys(baseData).forEach(key => {
+                    formDataObj.append(key, baseData[key]);
                 });
                 if (files.profile_photo) formDataObj.append('profile_photo', files.profile_photo);
                 if (files.cnic_document) formDataObj.append('cnic_document', files.cnic_document);
 
                 dataToSend = formDataObj;
             } else {
-                // Use JSON for Customer (No files yet)
-                dataToSend = formData;
+                // Use JSON for Customer
+                dataToSend = baseData;
             }
 
             const result = await register(role, dataToSend);
@@ -89,12 +122,12 @@ const RegisterPage = () => {
                         </Link>
                     </div>
                     <div>
-                        <h1 className="text-5xl font-display font-bold mb-6">Join Aixos FireFighter</h1>
+                        <h1 className="text-5xl font-display font-bold mb-6">Join AiXOS FireFighter</h1>
                         <p className="text-xl text-white/80 max-w-md">
                             {isAgent ? 'Start your journey as a certified safety partner. Upload your credentials to get approved.' : 'Secure your business with professional fire protection.'}
                         </p>
                     </div>
-                    <div className="text-sm text-white/40">&copy; 2026 Aixos FireFighter.</div>
+                    <div className="text-sm text-white/40">&copy; 2026 AiXOS FireFighter.</div>
                 </div>
             </div>
 
@@ -131,11 +164,27 @@ const RegisterPage = () => {
                                         </div>
                                     </div>
 
-                                    <Input label="Email" name="email" type="email" value={formData.email} onChange={handleChange} required />
+                                    <Input label="Email" name="email" type="email" value={formData.email} onChange={handleChange} placeholder="Optional (for login)" />
                                     <Input label="Password" name="password" type="password" value={formData.password} onChange={handleChange} required />
 
                                     <div className="grid grid-cols-2 gap-4">
-                                        <Input label="Phone" name="phone" value={formData.phone} onChange={handleChange} required />
+                                        {/* Phone Input Custom */}
+                                        <div className="col-span-1">
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
+                                            <div className="flex rounded-xl border border-slate-200 overflow-hidden focus-within:ring-2 focus-within:ring-accent-500/20 focus-within:border-accent-500">
+                                                <div className="bg-slate-50 px-3 py-3 text-slate-500 border-r border-slate-200 font-medium select-none min-w-[3.5rem] flex items-center justify-center">
+                                                    {loadingIp ? '...' : countryCode}
+                                                </div>
+                                                <input
+                                                    name="phoneLocal"
+                                                    value={formData.phoneLocal}
+                                                    onChange={handleChange}
+                                                    className="flex-1 px-4 py-3 outline-none min-w-0"
+                                                    placeholder="3XX XXXXXXX"
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
                                         <Input label="CNIC Number" name="cnic" value={formData.cnic} onChange={handleChange} required placeholder="XXXXX-XXXXXXX-X" />
                                     </div>
 
@@ -191,9 +240,27 @@ const RegisterPage = () => {
                                 <>
                                     <Input label="Business Name" name="business_name" value={formData.business_name} onChange={handleChange} required />
                                     <Input label="Owner Name" name="owner_name" value={formData.owner_name} onChange={handleChange} />
-                                    <Input label="Email" name="email" type="email" value={formData.email} onChange={handleChange} required />
+                                    <Input label="Email" name="email" type="email" value={formData.email} onChange={handleChange} placeholder="Optional for now" />
                                     <Input label="Password" name="password" type="password" value={formData.password} onChange={handleChange} required />
-                                    <Input label="Phone" name="phone" value={formData.phone} onChange={handleChange} />
+
+                                    {/* Phone Input Custom Customer */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
+                                        <div className="flex rounded-xl border border-slate-200 overflow-hidden focus-within:ring-2 focus-within:ring-accent-500/20 focus-within:border-accent-500">
+                                            <div className="bg-slate-50 px-3 py-3 text-slate-500 border-r border-slate-200 font-medium select-none min-w-[3.5rem] flex items-center justify-center">
+                                                {loadingIp ? '...' : countryCode}
+                                            </div>
+                                            <input
+                                                name="phoneLocal"
+                                                value={formData.phoneLocal}
+                                                onChange={handleChange}
+                                                className="flex-1 px-4 py-3 outline-none min-w-0"
+                                                placeholder="3XX XXXXXXX"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
                                     <Input label="Address" name="address" value={formData.address} onChange={handleChange} />
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Business Type</label>

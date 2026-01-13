@@ -21,7 +21,7 @@ const RoleCard = ({ to, icon: Icon, title, description, color, badges }) => (
             ))}
         </div>
 
-        <div className="flex items-center text-accent-600 font-bold group-hover:translate-x-2 transition-transform">
+        <div className="flex items-center text-primary-600 font-bold group-hover:translate-x-2 transition-transform">
             <span>Get Started</span>
             <ArrowRight size={18} className="ml-2" />
         </div>
@@ -42,20 +42,20 @@ const Feature = ({ title, desc }) => (
 
 const LandingPage = () => {
     return (
-        <div className="min-h-screen bg-slate-50 font-sans selection:bg-accent-100 selection:text-accent-900">
+        <div className="min-h-screen bg-slate-50 font-sans selection:bg-primary-100 selection:text-primary-900">
             {/* Navbar */}
             <nav className="glass fixed w-full z-50 px-6 py-4">
                 <div className="max-w-7xl mx-auto flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                        <div className="p-2 bg-accent-500 rounded-lg">
+                        <div className="p-2 bg-primary-500 rounded-lg">
                             <Shield className="text-white" size={24} />
                         </div>
-                        <span className="text-xl font-display font-bold text-slate-900">Aixos<span className="text-accent-500">.</span></span>
+                        <span className="text-xl font-display font-bold text-slate-900">AiXOS<span className="text-primary-500">.</span></span>
                     </div>
                     <div className="hidden md:flex items-center gap-8">
                         <a href="#features" className="text-slate-600 hover:text-slate-900 font-medium transition-colors">Features</a>
                         <a href="#about" className="text-slate-600 hover:text-slate-900 font-medium transition-colors">About</a>
-                        <Link to="/login/agent" className="text-slate-900 font-medium hover:text-accent-600">Agent Login</Link>
+                        <Link to="/login/agent" className="text-slate-900 font-medium hover:text-primary-600">Agent Login</Link>
                         <Link to="/login/customer" className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-slate-800 transition-shadow shadow-lg shadow-slate-900/20">
                             Book Service
                         </Link>
@@ -65,7 +65,7 @@ const LandingPage = () => {
 
             {/* Hero Section */}
             <div className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden bg-hero-pattern">
-                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-[600px] h-[600px] bg-accent-200/20 rounded-full blur-3xl"></div>
+                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-[600px] h-[600px] bg-primary-200/20 rounded-full blur-3xl"></div>
                 <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-[500px] h-[500px] bg-blue-200/20 rounded-full blur-3xl"></div>
 
                 <div className="max-w-7xl mx-auto px-6 relative z-10">
@@ -76,7 +76,7 @@ const LandingPage = () => {
                         </div>
 
                         <h1 className="text-5xl lg:text-7xl font-display font-bold text-slate-900 mb-6 leading-tight tracking-tight">
-                            Modern <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-500 to-orange-600">Fire Safety</span> <br />
+                            Modern <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-500 to-red-600">Fire Safety</span> <br />
                             Management
                         </h1>
 
@@ -110,7 +110,7 @@ const LandingPage = () => {
                             icon={Briefcase}
                             title="Field Agents"
                             description="Expand your territory. Manage visits, track commissions, and optimize your daily route."
-                            color="bg-accent-500 text-white"
+                            color="bg-primary-500 text-white"
                             badges={['Route Planning', 'Commission Tracking', 'Digital Reports']}
                         />
                         <RoleCard
@@ -130,7 +130,7 @@ const LandingPage = () => {
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="grid md:grid-cols-2 gap-12 items-center">
                         <div>
-                            <h2 className="text-3xl font-display font-bold text-slate-900 mb-6">Why choose Aixos?</h2>
+                            <h2 className="text-3xl font-display font-bold text-slate-900 mb-6">Why choose AiXOS?</h2>
                             <p className="text-slate-600 mb-8 text-lg">We streamline the chaotic process of manual safety checks into a seamless digital experience.</p>
 
                             <div className="space-y-6">
@@ -158,7 +158,7 @@ const LandingPage = () => {
 
                             <div className="bg-white rounded-xl shadow-lg p-6 transform rotate-2 translate-x-4 border border-slate-100">
                                 <div className="flex items-center gap-4 mb-4">
-                                    <div className="w-12 h-12 bg-accent-100 rounded-xl flex items-center justify-center text-accent-600">
+                                    <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center text-primary-600">
                                         <Shield size={24} />
                                     </div>
                                     <div>
@@ -181,10 +181,10 @@ const LandingPage = () => {
                 <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-8">
                     <div className="col-span-1 md:col-span-2">
                         <div className="flex items-center gap-2 mb-4">
-                            <div className="p-1.5 bg-accent-500 rounded-lg">
+                            <div className="p-1.5 bg-primary-500 rounded-lg">
                                 <Shield className="text-white" size={20} />
                             </div>
-                            <span className="text-xl font-display font-bold text-white">Aixos</span>
+                            <span className="text-xl font-display font-bold text-white">AiXOS</span>
                         </div>
                         <p className="max-w-xs">Protecting lives and properties with intelligent fire safety management solutions.</p>
                     </div>

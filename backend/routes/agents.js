@@ -33,6 +33,8 @@ router.get('/customers/search', (req, res) => {
 
 // LOG VISIT (Complex Transaction)
 router.post('/visits', upload.any(), (req, res) => {
+    const QRCode = require('qrcode');
+    const fs = require('fs');
     // req.body will contain flattened data. 
     // inventory items might come as array-like keys or JSON string if sent as such. 
     // For simplicity with FormData, we might receive 'inventory' as a JSON string.
@@ -91,11 +93,31 @@ router.post('/visits', upload.any(), (req, res) => {
         // Create Lead Customer
         // For leads, password can be a placeholder
         const placeholderPass = '$2a$08$abcdefg...'; // Dummy hash
+        const finalEmail = email || `lead-${Date.now()}@temp.com`;
+
         db.run(`INSERT INTO customers (business_name, owner_name, email, password, phone, address, business_type, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'Lead')`,
-            [business_name, owner_name, email || `lead-${Date.now()}@temp.com`, placeholderPass, phone, address, business_type],
+            [business_name, owner_name, finalEmail, placeholderPass, phone, address, business_type],
             function (err) {
                 if (err) return res.status(500).json({ error: 'Failed to create lead customer', details: err.message });
-                processVisit(this.lastID);
+
+                const newCustId = this.lastID;
+
+                // GENERATE QR
+                const qrDir = path.join(__dirname, '../uploads/qrcodes');
+                if (!fs.existsSync(qrDir)) fs.mkdirSync(qrDir, { recursive: true });
+
+                const qrContent = JSON.stringify({ id: newCustId, type: 'customer', name: business_name, url: `https://app.aixos.com/customer/${newCustId}` });
+                const qrFileName = `qr-lead-${newCustId}-${Date.now()}.png`;
+                const qrFilePath = path.join(qrDir, qrFileName);
+
+                QRCode.toFile(qrFilePath, qrContent, { color: { dark: '#000000', light: '#0000' } }, (qrErr) => {
+                    if (!qrErr) {
+                        const qrUrl = `/uploads/qrcodes/${qrFileName}`;
+                        db.run(`UPDATE customers SET qr_code_url = ? WHERE id = ?`, [qrUrl, newCustId]);
+                    }
+                });
+
+                processVisit(newCustId);
             }
         );
     }
@@ -154,6 +176,20 @@ router.get('/:id/my-customers', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
+});
+
+// UPDATE LOCATION
+router.post('/location', (req, res) => {
+    const { id, lat, lng } = req.body;
+    const now = new Date().toISOString();
+
+    db.run(`UPDATE agents SET location_lat = ?, location_lng = ?, last_active = ? WHERE id = ?`,
+        [lat, lng, now, id],
+        (err) => {
+            if (err) return res.status(500).json({ error: 'DB Error' });
+            res.json({ message: 'Location updated' });
+        }
+    );
 });
 
 module.exports = router;
