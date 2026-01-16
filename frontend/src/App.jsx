@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPassword from './pages/ForgotPassword';
 import Layout from './components/Layout';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -57,6 +58,7 @@ function App() {
             {/* Auth Routes */}
             <Route path="/login/:role" element={<LoginPage />} />
             <Route path="/register/:role" element={<RegisterPage />} />
+            <Route path="/forgot-password/:role" element={<ForgotPassword />} />
 
             {/* Agent Routes */}
             <Route path="/agent/*" element={

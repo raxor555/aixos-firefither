@@ -66,7 +66,7 @@ const Layout = ({ children }) => {
                             <Shield size={24} className="text-white" />
                         </div>
                         <h1 className="text-2xl font-display font-extrabold text-white tracking-tight">
-                            AiXOS<span className="text-primary-500">.</span>
+                            AiXOS Red<span className="text-primary-500">.</span>
                         </h1>
                     </div>
                 </div>
@@ -111,7 +111,7 @@ const Layout = ({ children }) => {
                         <div className="p-1.5 bg-primary-500 rounded">
                             <Shield size={18} className="text-white" />
                         </div>
-                        <h1 className="text-lg font-bold text-slate-900">AiXOS</h1>
+                        <h1 className="text-lg font-bold text-slate-900">AiXOS Red</h1>
                     </div>
                     <button onClick={handleLogout} className="text-slate-500"><LogOut size={20} /></button>
                 </header>

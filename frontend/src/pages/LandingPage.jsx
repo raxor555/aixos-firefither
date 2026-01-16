@@ -50,7 +50,7 @@ const LandingPage = () => {
                         <div className="p-2 bg-primary-500 rounded-lg">
                             <Shield className="text-white" size={24} />
                         </div>
-                        <span className="text-xl font-display font-bold text-slate-900">AiXOS<span className="text-primary-500">.</span></span>
+                        <span className="text-xl font-display font-bold text-slate-900">AiXOS Red<span className="text-primary-500">.</span></span>
                     </div>
                     <div className="hidden md:flex items-center gap-8">
                         <a href="#features" className="text-slate-600 hover:text-slate-900 font-medium transition-colors">Features</a>
@@ -184,7 +184,7 @@ const LandingPage = () => {
                             <div className="p-1.5 bg-primary-500 rounded-lg">
                                 <Shield className="text-white" size={20} />
                             </div>
-                            <span className="text-xl font-display font-bold text-white">AiXOS</span>
+                            <span className="text-xl font-display font-bold text-white">AiXOS Red</span>
                         </div>
                         <p className="max-w-xs">Protecting lives and properties with intelligent fire safety management solutions.</p>
                     </div>

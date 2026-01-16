@@ -113,7 +113,7 @@ const RegisterPage = () => {
     return (
         <div className="min-h-screen flex bg-white">
             {/* Left Side */}
-            <div className={`hidden lg:flex lg:w-1/2 relative overflow-hidden ${isAgent ? 'bg-orange-600' : 'bg-slate-900'}`}>
+            <div className={`hidden lg:flex lg:w-1/2 relative overflow-hidden ${isAgent ? 'bg-red-600' : 'bg-slate-900'}`}>
                 <div className="absolute inset-0 bg-hero-pattern opacity-10"></div>
                 <div className="relative z-10 flex flex-col justify-between p-12 text-white h-full">
                     <div>
@@ -122,12 +122,12 @@ const RegisterPage = () => {
                         </Link>
                     </div>
                     <div>
-                        <h1 className="text-5xl font-display font-bold mb-6">Join AiXOS FireFighter</h1>
+                        <h1 className="text-5xl font-display font-bold mb-6">Join AiXOS Red</h1>
                         <p className="text-xl text-white/80 max-w-md">
                             {isAgent ? 'Start your journey as a certified safety partner. Upload your credentials to get approved.' : 'Secure your business with professional fire protection.'}
                         </p>
                     </div>
-                    <div className="text-sm text-white/40">&copy; 2026 AiXOS FireFighter.</div>
+                    <div className="text-sm text-white/40">&copy; 2026 AiXOS Red.</div>
                 </div>
             </div>
 

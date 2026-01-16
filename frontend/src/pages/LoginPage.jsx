@@ -29,7 +29,7 @@ const LoginPage = () => {
     };
 
     const getRoleData = () => {
-        if (role === 'agent') return { title: 'Agent Portal', sub: 'Log visits and track earnings', bg: 'bg-orange-600' };
+        if (role === 'agent') return { title: 'Agent Portal', sub: 'Log visits and track earnings', bg: 'bg-red-600' };
         if (role === 'customer') return { title: 'Client Portal', sub: 'Manage your safety compliance', bg: 'bg-slate-900' };
         return { title: 'Admin Console', sub: 'Platform management', bg: 'bg-slate-800' };
     };
@@ -53,7 +53,7 @@ const LoginPage = () => {
                         <p className="text-xl text-white/80 max-w-md">{sub}</p>
                     </div>
                     <div className="text-sm text-white/40">
-                        &copy; 2026 AiXOS FireFighter. all rights reserved.
+                        &copy; 2026 AiXOS Red. all rights reserved.
                     </div>
                 </div>
             </div>
@@ -114,6 +114,12 @@ const LoginPage = () => {
                                         onChange={(e) => setPassword(e.target.value)}
                                     />
                                 </div>
+                            </div>
+
+                            <div className="flex items-center justify-end">
+                                <Link to={`/forgot-password/${role}`} className="text-sm font-medium text-primary-600 hover:text-primary-500">
+                                    Forgot password?
+                                </Link>
                             </div>
 
                             <button
